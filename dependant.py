@@ -1,3 +1,3 @@
 class depen:
-    def print(self):
+    def print():
         print("dependant")
