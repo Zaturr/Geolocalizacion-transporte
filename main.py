@@ -1,9 +1,9 @@
 import sqlite3
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
-
+from dependant import depen
 app = FastAPI()
-
+depen.print()
 # Database setup (SQLite for simplicity)
 def create_connection():
     conn = None
