@@ -1,0 +1,131 @@
+I. Inicio y Planificación del Proyecto:
+
+
+    1. Documento de Visión/Carta del Proyecto:
+
+        Define los objetivos, el alcance, los propósitos y los requisitos de alto nivel del proyecto.
+    
+            Nombre del Proyecto y Breve Descripción
+            Metas y Objetivos del Proyecto (ej., Mejorar la navegación del transporte público en Caracas)
+            Público Objetivo (ej., Residentes y visitantes de Caracas que utilizan el transporte público)
+            Funcionalidades Clave (mapeo, gestión de rutas, información en tiempo real, compilación de horarios de autobuses)
+            Métricas de Éxito (ej., Número de descargas, participación del usuario, comentarios positivos)
+            Alcance de Alto Nivel (Qué se incluye y qué se excluye)
+            Cronograma del Proyecto (Fases de alto nivel y duraciones estimadas)
+            Partes Interesadas (Quiénes están involucrados)
+            Supuestos y Restricciones Iniciales (ej., Disponibilidad de datos, presupuesto)
+
+
+    2. Documento de Requisitos (Detallado):
+
+        Requisitos Funcionales: Funciones específicas que la aplicación debe realizar (ej., Mostrar rutas de autobús en un mapa, permitir a los usuarios buscar rutas, proporcionar horarios de llegada estimados, permitir a los usuarios guardar rutas favoritas, etc.).
+        Requisitos No Funcionales: Atributos de calidad de la aplicación (ej., Rendimiento, Seguridad, Usabilidad, Fiabilidad, Escalabilidad, Localización - específicamente para Caracas).
+        Casos de Uso: Describiendo cómo los usuarios interactuarán con la aplicación para lograr objetivos específicos.
+        Historias de Usuario: Descripciones cortas y sencillas de una funcionalidad contada desde la perspectiva del usuario final.
+
+
+    3. Documento de Diseño Técnico (Alto Nivel):
+
+        Describe la arquitectura general y el enfoque técnico.
+            Arquitectura de la Aplicación (ej., Cliente-servidor, híbrida)
+            Pila Tecnológica (ej., React Native, Flutter, nativo Android/iOS, tecnologías de backend)
+            Diseño de la Base de Datos (Breve descripción de cómo se almacenarán las rutas e información de autobuses)
+            Integración de API (Si aplica, cómo la aplicación interactuará con APIs externas)
+            Consideraciones de Seguridad (Nivel alto)
+
+
+II. Diseño y Experiencia del Usuario (UX):
+
+
+    4. Documento de Diseño de Interfaz de Usuario (UI) / Maquetas y Wireframes:
+
+        Representación visual de las pantallas de la aplicación y el flujo del usuario.
+
+            Wireframes (diseños básicos de las pantallas)
+            Maquetas (diseños visuales más detallados con colores, fuentes y elementos de la interfaz de usuario)
+            Diagramas de Flujo de Usuario (visualizando cómo los usuarios navegan por la aplicación)
+            Guía de Estilo (colores, tipografía, iconos y estilo visual general)
+            Consideraciones de Diseño Específicas de la Plataforma (Android Material Design, Guías de Interfaz Humana de iOS)
+
+
+    5. Documento de Diseño de Experiencia del Usuario (UX):
+
+        Se centra en la interacción del usuario y la experiencia general.
+
+            Personas de Usuario (representaciones ficticias de los usuarios objetivo)
+            Plan de Pruebas de Usabilidad (cómo se evaluará la usabilidad)
+            Consideraciones de Accesibilidad (asegurando que la aplicación sea utilizable por personas con discapacidades)
+
+
+III. Desarrollo e Implementación:
+
+
+    6. Documentación de la API (si aplica):
+        
+        Describe las APIs utilizadas por la aplicación (si estás construyendo un backend o integrando con APIs externas).
+
+            Endpoints de la API, métodos de solicitud, parámetros y formatos de respuesta.
+            Mecanismos de autenticación y autorización.
+
+
+    7. Documento del Esquema de la Base de Datos (Detallado):
+
+        Descripción detallada de la estructura de la base de datos.
+            Nombres de tablas, nombres de columnas, tipos de datos, relaciones entre tablas.
+
+
+    8. Guía de Estilo de Código:
+
+        Define los estándares de codificación y las mejores prácticas para garantizar la coherencia del código.
+            Convenciones de nomenclatura para variables, funciones y clases.
+            Directrices de formato.
+            Directrices de comentarios.
+
+
+    9. Plan de Pruebas:
+
+        Describe la estrategia y los procedimientos de prueba.
+            Tipos de pruebas (unitarias, de integración, de aceptación del usuario - UAT)
+            Casos de prueba y escenarios
+            Configuración del entorno de pruebas
+            Proceso de seguimiento de defectos
+
+
+IV. Despliegue y Mantenimiento:
+
+
+    10. Guía de Despliegue:
+
+        Instrucciones sobre cómo construir, empaquetar y desplegar la aplicación en las tiendas de aplicaciones (Google Play Store, Apple App Store).
+            Pasos para generar builds de lanzamiento.
+            Instrucciones para crear listados en las tiendas de aplicaciones.
+            Consideraciones para la firma y distribución.
+
+
+    11. Documentación de Mantenimiento y Soporte:
+
+        Información para mantener y actualizar la aplicación.
+            Guías de solución de problemas para problemas comunes.
+            Instrucciones para actualizar dependencias y la propia aplicación.
+            Información de contacto para soporte.
+
+
+
+V. Documentación Específica de Datos (Crucial para Caracas):
+
+
+    12. Fuentes de Datos y Plan de Adquisición:
+
+        Describe cómo obtendrás y gestionarás los datos de rutas y horarios de autobuses para Caracas.
+            Identificación de posibles fuentes de datos (ej., autoridades de transporte público, recursos en línea existentes, recopilación manual de datos).
+            Formatos y estructuras de datos.
+            Procesos de limpieza y validación de datos.
+            Frecuencia y mecanismos de actualización de datos.
+
+
+    13. Modelo de Datos para Rutas e Información de Autobuses:
+
+        Define cómo se estructurarán los datos de rutas, paradas y horarios de autobuses dentro de tu base de datos.
+            Descripción detallada de los campos de datos y sus relaciones.
+            Consideraciones para el manejo de datos en tiempo real si se planea.
+
