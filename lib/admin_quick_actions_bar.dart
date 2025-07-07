@@ -1,23 +1,26 @@
-// lib/admin_quick_actions_bar.dart
-
 import 'package:flutter/material.dart';
+import 'route_list_screen.dart'; // Asegúrate de que la ruta sea correcta
 
 class AdminQuickActionsBar extends StatelessWidget {
-  const AdminQuickActionsBar({super.key});
+  const AdminQuickActionsBar({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Acceder al ColorScheme del tema actual para consistencia visual
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
     // Define your quick action buttons
-    // In a real app, these would have actual onTap callbacks to navigate or perform actions
+    // En una aplicación real, estos tendrían callbacks onTap reales para navegar o realizar acciones
     final List<Map<String, dynamic>> actions = [
       {
         'label': 'Rutas',
         'icon': Icons.alt_route,
         'onTap': () {
-          print('Rutas button pressed');
-          // TODO: Navigate to Routes management screen
+          // Navegar a RouteListScreen cuando se presione el botón "Rutas"
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const RouteListScreen()),
+          );
         },
       },
       {

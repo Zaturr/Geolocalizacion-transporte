@@ -7,7 +7,7 @@ import 'login.dart';
 import 'dashboard_client.dart';
 import 'dashboard_admin.dart';
 import 'dashboard_driver.dart';
-import 'splash.dart';
+// import 'splash.dart'; // Ya no es necesario si la lógica de bienvenida está en login.dart
 import 'themes.dart';
 
 Future<void> main() async {
@@ -29,7 +29,8 @@ Future<void> main() async {
     if (session != null) {
       runApp(const MyApp(initialRoute: '/dashboard'));
     } else {
-      runApp(const MyApp(initialRoute: '/splash'));
+      // Si no hay sesión, siempre ir a la pantalla de login, que ahora maneja la bienvenida.
+      runApp(const MyApp(initialRoute: '/login'));
     }
   } catch (e) {
     runApp(
@@ -47,7 +48,7 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   final String initialRoute;
 
-  const MyApp({super.key, this.initialRoute = '/splash'});
+  const MyApp({super.key, this.initialRoute = '/login'}); // Cambiado el valor por defecto a '/login'
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +59,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       initialRoute: initialRoute,
       routes: {
-        '/splash': (context) => const SplashScreen(),
+        // '/splash': (context) => const SplashScreen(), // Esta ruta ya no es necesaria
         '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardWrapper(),
       },

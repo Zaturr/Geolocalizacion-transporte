@@ -1,5 +1,3 @@
-// lib/dashboard_admin.dart
-
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,10 +14,12 @@ import 'company_vehicles_list.dart'; // <--- NEW: Import the vehicles list widge
 import 'dashboard_client.dart';
 import 'dashboard_driver.dart';
 import 'user_settings_screen.dart';
-import 'create_organization_screen.dart';
+//import 'create_organization_screen.dart'; // Comentado si no se usa directamente aquí
 import 'support_screen.dart';
 import 'manage_users_screen.dart';
 import 'edit_admin_settings_screen.dart';
+import 'route_creation_screen.dart'; // <--- NEW: Import the route creation screen
+import 'route_list_screen.dart'; // <--- NEW: Import the route list screen
 
 class DashboardAdmin extends StatefulWidget {
   const DashboardAdmin({super.key});
@@ -187,6 +187,11 @@ class _DashboardAdminState extends State<DashboardAdmin> {
     _navigateTo(context, const EditAdminSettingsScreen());
   }
 
+  // NEW: Navigate to Route List Screen
+  void _navigateToRouteList() {
+    _navigateTo(context, const RouteListScreen());
+  }
+
   double get _topPadding {
     if (Platform.isAndroid) {
       return 25.0;
@@ -199,24 +204,40 @@ class _DashboardAdminState extends State<DashboardAdmin> {
 
   @override
   Widget build(BuildContext context) {
-    final double topBarHeight = kToolbarHeight + _topPadding + 10;
+    // Calcula la altura total de la TopBar, incluyendo el padding del sistema y el espacio extra.
+    // Se usa para posicionar otros elementos relativos a la TopBar.
+    final double topBarHeightWithExtraSpace =
+        kToolbarHeight + _topPadding + TopBar.extraSpaceAboveBar +
+        (TopBar.internalVerticalPadding * 2);
 
     return Scaffold(
+      // [Fondo del Dashboard]
+      // El color de fondo del Scaffold se establece utilizando el color 'secondaryContainer'
+      // del esquema de colores de Material Design para proporcionar un contraste.
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: Stack(
         children: [
+          // [Caja 1: Contenido Principal del Dashboard]
+          // Un Column que contiene la TopBar y el área de contenido principal.
           Column(
             children: [
+              // [Caja 1.1: TopBar]
+              // La barra superior de la aplicación con el nombre de usuario y el botón de menú.
               TopBar(
                 onMenuPressed: _toggleProfileMenu,
                 userName: _userName,
                 topPadding: _topPadding,
               ),
+              // [Caja 1.2: Área de Contenido Desplazable]
+              // Un área expandida y desplazable que contiene los diferentes widgets del dashboard.
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // [Caja 1.2.1: Título de Resumen]
+                      // Título para la sección de resumen del dashboard.
                       Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Text(
@@ -227,15 +248,26 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                           ),
                         ),
                       ),
+                      // [Caja 1.2.2: Gráfico de Usuarios Mensuales]
+                      // Widget que muestra un gráfico de usuarios mensuales.
                       const MonthlyUsersChart(),
                       const SizedBox(height: 16),
+                      // [Caja 1.2.3: Barra de Acciones Rápidas del Admin]
+                      // Widget con botones para acciones rápidas del administrador.
+                      // Se asume que este widget contendrá el botón "Rutas"
+                      // y que su lógica de navegación se manejará internamente
+                      // o a través de un callback si es necesario.
                       const AdminQuickActionsBar(),
                       const SizedBox(height: 16),
-                      // Existing placeholder:
+                      // [Caja 1.2.4: Tarjeta de Estadísticas Rápidas]
+                      // Una tarjeta con información estadística clave.
                       Card(
                         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                         elevation: 4,
+                        // El color de fondo de la tarjeta utiliza el color 'surface' del esquema de colores,
+                        // que por defecto es diferente al color 'background' del Scaffold.
+                        color: Theme.of(context).colorScheme.surface,
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
@@ -254,9 +286,13 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const CompanyVehiclesList(), // <--- NEW: Insert the vehicles list here
-                      const SizedBox(height: 16), // Spacing below the vehicles list
+                      // [Caja 1.2.5: Lista de Vehículos de la Compañía]
+                      // Widget que muestra una lista de vehículos de la compañía.
+                      const CompanyVehiclesList(),
+                      const SizedBox(height: 16), // Espacio debajo de la lista de vehículos
 
+                      // [Caja 1.2.6: Botones de Navegación Adicionales]
+                      // Sección con botones para navegar a otras pantallas de administración.
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Column(
@@ -281,6 +317,7 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                             ),
+                            // El botón "Administrar Rutas" ha sido eliminado de aquí.
                           ],
                         ),
                       ),
@@ -292,18 +329,21 @@ class _DashboardAdminState extends State<DashboardAdmin> {
             ],
           ),
 
+          // [Caja 2: Menú de Perfil Desplegable]
+          // El menú desplegable del perfil, que se muestra u oculta condicionalmente.
           if (_isProfileMenuOpen)
             Positioned(
-              top: topBarHeight,
+              // Posiciona el menú justo debajo de la TopBar.
+              top: topBarHeightWithExtraSpace,
               left: 0,
               right: 0,
               child: GestureDetector(
-                onTap: _closeProfileMenu,
-                behavior: HitTestBehavior.opaque,
+                onTap: _closeProfileMenu, // Cierra el menú al tocar fuera
+                behavior: HitTestBehavior.opaque, // Permite detectar toques en el área transparente
                 child: CustomDropdownMenu(
                   onCloseMenu: _closeProfileMenu,
                   menuItems: _profileMenuItems,
-                  topPosition: 0,
+                  topPosition: 0, // Posición interna del menú (puede ajustarse)
                 ),
               ),
             ),

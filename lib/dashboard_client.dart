@@ -32,25 +32,36 @@ class _DashboardClientState extends State<DashboardClient> {
   late List<RouteOption> _availableRoutes;
   late List<Widget> _profileMenuItems;
 
-
   @override
   void initState() {
     super.initState();
     _fetchUserName(); // NEW: Call to fetch username
 
     _availableRoutes = [
-      RouteOption(name: "Ruta Principal", onTap: () {
-        print("Selected: Ruta Principal");
-      }),
-      RouteOption(name: "Ruta 2 (Norte)", onTap: () {
-        print("Selected: Ruta 2 (Norte)");
-      }),
-      RouteOption(name: "Ruta 3 (Sur)", onTap: () {
-        print("Selected: Ruta 3 (Sur)");
-      }),
-      RouteOption(name: "Ver todas las Rutas", onTap: () {
-        print("Selected: Ver todas las Rutas");
-      }),
+      RouteOption(
+        name: "Ruta Principal",
+        onTap: () {
+          print("Selected: Ruta Principal");
+        },
+      ),
+      RouteOption(
+        name: "Ruta 2 (Norte)",
+        onTap: () {
+          print("Selected: Ruta 2 (Norte)");
+        },
+      ),
+      RouteOption(
+        name: "Ruta 3 (Sur)",
+        onTap: () {
+          print("Selected: Ruta 3 (Sur)");
+        },
+      ),
+      RouteOption(
+        name: "Ver todas las Rutas",
+        onTap: () {
+          print("Selected: Ver todas las Rutas");
+        },
+      ),
     ];
   }
 
@@ -64,7 +75,11 @@ class _DashboardClientState extends State<DashboardClient> {
         onLogout: _handleLogout,
         onNavigateToSettings: _navigateToUserSettings,
         onCreateOrganization: _navigateToCreateOrganization,
-        onNavigateToSupport: () => _navigateToSupport(context, _userName), // MODIFIED: Pass username
+        onNavigateToSupport:
+            () => _navigateToSupport(
+                  context,
+                  _userName,
+                ), // MODIFIED: Pass username
       ),
     ];
   }
@@ -77,11 +92,12 @@ class _DashboardClientState extends State<DashboardClient> {
         // Assuming your user's name is in a 'profiles' table linked by user.id
         // and the column name for the username is 'username' or 'name'.
         // Adjust the table name and column name as per your Supabase setup.
-        final response = await Supabase.instance.client
-            .from('profiles') // Your profiles table name
-            .select('username') // The column where the username is stored
-            .eq('id', user.id)
-            .single(); // Expecting a single row
+        final response =
+            await Supabase.instance.client
+                .from('profiles') // Your profiles table name
+                .select('username') // The column where the username is stored
+                .eq('id', user.id)
+                .single(); // Expecting a single row
 
         if (mounted) {
           setState(() {
@@ -113,7 +129,6 @@ class _DashboardClientState extends State<DashboardClient> {
     }
   }
 
-
   void _toggleProfileMenu() {
     setState(() {
       _isProfileMenuOpen = !_isProfileMenuOpen;
@@ -131,38 +146,47 @@ class _DashboardClientState extends State<DashboardClient> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
-        ),
-        title: Text(
-          "Seleccionar Dashboard",
-          style: TextStyle(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: colorScheme.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15.0),
+            ),
+            title: Text(
+              "Seleccionar Dashboard",
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: Text(
+                    "Admin",
+                    style: TextStyle(color: colorScheme.onSurface),
+                  ),
+                  onTap:
+                      () => _navigateToReplacement(
+                            context,
+                            const DashboardAdmin(),
+                          ),
+                ),
+                ListTile(
+                  title: Text(
+                    "Conductor",
+                    style: TextStyle(color: colorScheme.onSurface),
+                  ),
+                  onTap:
+                      () => _navigateToReplacement(
+                            context,
+                            const DashboardDriver(),
+                          ),
+                ),
+              ],
+            ),
           ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text(
-                "Admin",
-                style: TextStyle(color: colorScheme.onSurface),
-              ),
-              onTap: () => _navigateToReplacement(context, const DashboardAdmin()),
-            ),
-            ListTile(
-              title: Text(
-                "Conductor",
-                style: TextStyle(color: colorScheme.onSurface),
-              ),
-              onTap: () => _navigateToReplacement(context, const DashboardDriver()),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -175,10 +199,7 @@ class _DashboardClientState extends State<DashboardClient> {
   }
 
   void _navigateTo(BuildContext context, Widget screen) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => screen),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
   }
 
   void _handleRouteSelected(RouteOption selectedRoute) {
@@ -232,13 +253,15 @@ class _DashboardClientState extends State<DashboardClient> {
 
   // MODIFIED: Accepts username
   void _navigateToSupport(BuildContext context, String? userName) {
-    _navigateTo(context, SupportScreen(userName: userName)); // Pass username to SupportScreen
+    _navigateTo(
+      context,
+      SupportScreen(userName: userName),
+    ); // Pass username to SupportScreen
   }
-
 
   double get _topPadding {
     if (Platform.isAndroid) {
-      return 25.0;
+      return 1.0;
     } else if (Platform.isIOS) {
       return MediaQuery.of(context).padding.top;
     } else {
@@ -248,37 +271,58 @@ class _DashboardClientState extends State<DashboardClient> {
 
   @override
   Widget build(BuildContext context) {
-    final double topBarHeight = kToolbarHeight + _topPadding + 10;
+    // Calcula la altura total de la TopBar, incluyendo el padding del sistema y el espacio extra.
+    // Se usa para posicionar otros elementos relativos a la TopBar.
+    final double topBarHeightWithExtraSpace =
+        kToolbarHeight + _topPadding + TopBar.extraSpaceAboveBar + // Se corrigió el acceso
+        (TopBar.internalVerticalPadding * 2); // Se corrigió el acceso
 
     return Scaffold(
       body: Stack(
         children: [
+          // [Caja 1: Fondo del Mapa]
+          // Esta es la pantalla principal del mapa que ocupa todo el espacio disponible.
           const MapScreen(),
 
+          // [Caja 2: Contenido Superior (TopBar y RouteSelectorBar)]
+          // Un Column para apilar la TopBar y la RouteSelectorBar en la parte superior.
           Column(
             children: [
+              // [Caja 2.1: TopBar]
+              // La barra superior de la aplicación con el nombre de usuario y el botón de menú.
               TopBar(
                 onMenuPressed: _toggleProfileMenu,
-                userName: _userName ?? "Cargando...", // Display fetched name or a loading text
-                topPadding: _topPadding,
+                userName:
+                    _userName ?? "Cargando...", // Muestra el nombre o "Cargando..."
+                topPadding: _topPadding, // Padding superior para la barra de estado
               ),
+              // [Espacio entre TopBar y RouteSelectorBar]
+              // SizedBox para agregar un espacio vertical entre la barra superior y la barra de selección de ruta.
+              const SizedBox(height: 20.0), // Espacio adicional de 20.0 píxeles
+
+              // [Caja 2.2: RouteSelectorBar]
+              // La barra que permite al usuario seleccionar diferentes rutas.
               RouteSelectorBar(
                 currentRouteName: _currentRouteName,
                 routeOptions: _availableRoutes,
                 onRouteSelected: _handleRouteSelected,
               ),
+              // [Caja 3: Contenido Principal Expandido]
+              // El resto del espacio disponible, que puede contener otros elementos superpuestos.
               Expanded(
                 child: Stack(
                   children: [
+                    // [Caja 3.1: Botón Flotante (QR Scanner)]
+                    // Un FloatingActionButton posicionado en la esquina superior derecha del área expandida.
                     Positioned(
-                      top: 40.0,
-                      right: 16.0,
+                      top: 45.0, // Posición desde la parte superior
+                      right: 16.0, // Posición desde la derecha
                       child: Column(
                         children: [
                           FloatingActionButton(
-                            heroTag: "vistas",
-                            onPressed: _openQrScanner,
-                            child: const Icon(Icons.layers),
+                            heroTag: "vistas", // Etiqueta única para el Hero
+                            onPressed: _openQrScanner, // Abre el escáner QR
+                            child: const Icon(Icons.layers), // Icono de capas
                           ),
                         ],
                       ),
@@ -289,18 +333,21 @@ class _DashboardClientState extends State<DashboardClient> {
             ],
           ),
 
+          // [Caja 4: Menú de Perfil Desplegable]
+          // El menú desplegable del perfil, que se muestra u oculta condicionalmente.
           if (_isProfileMenuOpen)
             Positioned(
-              top: topBarHeight,
+              // Posiciona el menú justo debajo de la TopBar, con un pequeño margen.
+              top: topBarHeightWithExtraSpace + 25, // Ajusta la posición vertical
               left: 0,
               right: 0,
               child: GestureDetector(
-                onTap: _closeProfileMenu,
-                behavior: HitTestBehavior.opaque,
+                onTap: _closeProfileMenu, // Cierra el menú al tocar fuera
+                behavior: HitTestBehavior.opaque, // Permite detectar toques en el área transparente
                 child: CustomDropdownMenu(
                   onCloseMenu: _closeProfileMenu,
                   menuItems: _profileMenuItems,
-                  topPosition: 0,
+                  topPosition: 50, // Posición interna del menú (puede ajustarse)
                 ),
               ),
             ),
