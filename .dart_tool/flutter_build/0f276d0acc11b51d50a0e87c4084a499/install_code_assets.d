@@ -1,0 +1,1 @@
+ D:\\projects\\flutter\\Geolocalizacion-transporte\\.dart_tool\\flutter_build\\0f276d0acc11b51d50a0e87c4084a499\\native_assets.json: 

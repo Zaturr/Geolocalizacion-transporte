@@ -1,0 +1,2 @@
+D:/projects/flutter/Geolocalizacion-transporte/android/app/.cxx/Debug/2d1y2z3v/x86_64/CMakeFiles/edit_cache.dir
+D:/projects/flutter/Geolocalizacion-transporte/android/app/.cxx/Debug/2d1y2z3v/x86_64/CMakeFiles/rebuild_cache.dir
