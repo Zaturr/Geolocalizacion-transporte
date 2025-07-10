@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:package_info_plus/package_info_plus.dart'; // Importar package_info_plus
 
 import 'login.dart';
 import 'dashboard_client.dart';
 import 'dashboard_admin.dart';
 import 'dashboard_driver.dart';
-// import 'splash.dart'; // Ya no es necesario si la lógica de bienvenida está en login.dart
 import 'themes.dart';
 
 Future<void> main() async {
@@ -24,14 +24,14 @@ Future<void> main() async {
     );
 
     // Initial check for existing session
-    // This part correctly sets the initial route based on session presence.
     final session = Supabase.instance.client.auth.currentSession;
+    String initialRoute = '/login';
     if (session != null) {
-      runApp(const MyApp(initialRoute: '/dashboard'));
-    } else {
-      // Si no hay sesión, siempre ir a la pantalla de login, que ahora maneja la bienvenida.
-      runApp(const MyApp(initialRoute: '/login'));
+      initialRoute = '/dashboard';
     }
+
+    // Ejecutar la aplicación
+    runApp(MyApp(initialRoute: initialRoute));
   } catch (e) {
     runApp(
       MaterialApp(
@@ -45,10 +45,123 @@ Future<void> main() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget { // Cambiado a StatefulWidget
   final String initialRoute;
 
-  const MyApp({super.key, this.initialRoute = '/login'}); // Cambiado el valor por defecto a '/login'
+  const MyApp({super.key, this.initialRoute = '/login'});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Llamar a la verificación de la versión de la aplicación después de que el widget se ha construido.
+    // Esto asegura que el contexto esté disponible para mostrar diálogos.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAppVersion(context);
+    });
+  }
+
+  // Función para comparar versiones (ej. "1.0.0" vs "1.0.1")
+  // Retorna -1 si v1 < v2, 0 si v1 == v2, 1 si v1 > v2
+  int _compareVersions(String v1, String v2) {
+    final List<int> parts1 = v1.split('.').map(int.parse).toList();
+    final List<int> parts2 = v2.split('.').map(int.parse).toList();
+
+    for (int i = 0; i < parts1.length || i < parts2.length; i++) {
+      final int p1 = (i < parts1.length) ? parts1[i] : 0;
+      final int p2 = (i < parts2.length) ? parts2[i] : 0;
+
+      if (p1 < p2) return -1; // v1 es menor que v2
+      if (p1 > p2) return 1;  // v1 es mayor que v2
+    }
+    return 0; // Las versiones son iguales
+  }
+
+  // Función para verificar la versión de la aplicación
+  Future<void> _checkAppVersion(BuildContext context) async {
+    try {
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      final String currentAppVersion = packageInfo.version;
+      debugPrint('Versión actual de la aplicación: $currentAppVersion');
+
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('app_versions')
+          .select('latest_version, min_supported_version')
+          .order('updated_at', ascending: false) // Obtener la versión más reciente
+          .limit(1)
+          .single();
+
+      final String latestVersion = response['latest_version'] as String;
+      final String minSupportedVersion = response['min_supported_version'] as String;
+
+      debugPrint('Última versión disponible: $latestVersion');
+      debugPrint('Versión mínima soportada: $minSupportedVersion');
+
+      final int compareToLatest = _compareVersions(currentAppVersion, latestVersion);
+      final int compareToMinSupported = _compareVersions(currentAppVersion, minSupportedVersion);
+
+      if (compareToMinSupported < 0) {
+        // La versión actual es menor que la mínima soportada (actualización obligatoria)
+        _showUpdateDialog(
+          context,
+          'Actualización Obligatoria',
+          'Tu versión de la aplicación ($currentAppVersion) está desactualizada y ya no es compatible. Por favor, actualiza a la versión $latestVersion o superior para continuar.',
+          isCritical: true,
+        );
+      } else if (compareToLatest < 0) {
+        // Hay una nueva versión disponible (actualización recomendada)
+        _showUpdateDialog(
+          context,
+          'Actualización Disponible',
+          'Hay una nueva versión de la aplicación ($latestVersion) disponible. Estás usando la versión $currentAppVersion. ¡Actualiza para disfrutar de las últimas mejoras!',
+          isCritical: false,
+        );
+      } else {
+        debugPrint('La aplicación está actualizada o por encima de la versión mínima.');
+      }
+    } catch (e) {
+      debugPrint('Error al verificar la versión de la aplicación: $e');
+      // Puedes optar por no mostrar un diálogo al usuario en caso de error de verificación,
+      // o mostrar uno genérico si es crítico para el funcionamiento.
+    }
+  }
+
+  // Muestra un diálogo de actualización
+  void _showUpdateDialog(BuildContext context, String title, String message, {required bool isCritical}) {
+    showDialog(
+      context: context,
+      barrierDismissible: !isCritical, // Si es crítica, no se puede cerrar tocando fuera
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: <Widget>[
+            if (!isCritical)
+              TextButton(
+                child: const Text('Más Tarde'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(); // Cierra el diálogo
+                },
+              ),
+            TextButton(
+              child: const Text('Actualizar Ahora'),
+              onPressed: () {
+                // TODO: Implementar la lógica para redirigir al usuario a la tienda de aplicaciones
+                // Por ejemplo, usando el paquete 'url_launcher'
+                debugPrint('Redirigir a la tienda de aplicaciones para actualizar.');
+                Navigator.of(dialogContext).pop(); // Cierra el diálogo
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +170,8 @@ class MyApp extends StatelessWidget {
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: ThemeMode.system,
-      initialRoute: initialRoute,
+      initialRoute: widget.initialRoute,
       routes: {
-        // '/splash': (context) => const SplashScreen(), // Esta ruta ya no es necesaria
         '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardWrapper(),
       },
@@ -76,14 +188,11 @@ class DashboardWrapper extends StatefulWidget {
 }
 
 class _DashboardWrapperState extends State<DashboardWrapper> {
-  // We still use Future<Widget> because during the loading phase,
-  // we want to show a CircularProgressIndicator.
   late Future<Widget> _dashboardFuture;
 
   @override
   void initState() {
     super.initState();
-    // Initialize the future when the state is created
     _dashboardFuture = _determineDashboard();
   }
 
@@ -95,23 +204,21 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
           .eq('id', userId)
           .single();
 
-      // Ensure 'role' is not null and is a String
       return response['role'] as String? ?? 'User';
     } catch (e) {
-      // Log the error for debugging
       print('Error fetching user role: $e');
-      return 'User'; // Default to 'User' on error
+      return 'User';
     }
   }
 
   Widget _getDashboardByRole(String role) {
     switch (role) {
-      case 'Admin':
+      case 'Administrador':
         return const DashboardAdmin();
-      case 'Driver':
+      case 'Conductor':
         return const DashboardDriver();
-      case 'Client': // Ensure your database 'role' actually stores 'Client' if that's the default/fallback
-      case 'User': // Also handle 'User' if that's a possible role for clients
+      case 'Cliente':
+      case 'Usuario':
       default:
         return const DashboardClient();
     }
@@ -121,13 +228,10 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
     try {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
-        // If no session, navigate to login and prevent going back to wrapper
-        // Use post-frame callback to ensure context is available and widget is built
         WidgetsBinding.instance.addPostFrameCallback((_) {
           Navigator.of(context).pushReplacementNamed('/login');
         });
-        // Return a temporary empty/loading widget while navigation happens
-        return Container(); // or Scaffold(body: Center(child: Text('Redirecting...')))
+        return Container();
       }
 
       final userId = session.user.id;
@@ -135,11 +239,10 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
       return _getDashboardByRole(role);
     } catch (e) {
       print('Error determining dashboard: $e');
-      // If any error occurs, navigate to login
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.of(context).pushReplacementNamed('/login');
       });
-      return Container(); // Temporary widget
+      return Container();
     }
   }
 
@@ -149,27 +252,22 @@ class _DashboardWrapperState extends State<DashboardWrapper> {
       future: _dashboardFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // Show a loading indicator while the future is resolving
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         } else if (snapshot.hasError) {
-          // This case should ideally not be reached if pushReplacementNamed works
-          // But as a fallback, display an error or redirect again
           print('FutureBuilder error: ${snapshot.error}');
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.of(context).pushReplacementNamed('/login');
           });
-          return const SizedBox.shrink(); // Empty widget while redirecting
+          return const SizedBox.shrink();
         } else if (snapshot.hasData && snapshot.data != null) {
-          // If the future successfully returned a dashboard widget, display it
           return snapshot.data!;
         } else {
-          // Fallback, if snapshot.data is null for some reason
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.of(context).pushReplacementNamed('/login');
           });
-          return const SizedBox.shrink(); // Empty widget while redirecting
+          return const SizedBox.shrink();
         }
       },
     );

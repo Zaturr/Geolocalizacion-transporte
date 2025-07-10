@@ -392,6 +392,18 @@
       "languageVersion": "3.7"
     },
     {
+      "name": "package_info_plus",
+      "rootUri": "file:///C:/Users/rafae/AppData/Local/Pub/Cache/hosted/pub.dev/package_info_plus-8.3.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "package_info_plus_platform_interface",
+      "rootUri": "file:///C:/Users/rafae/AppData/Local/Pub/Cache/hosted/pub.dev/package_info_plus_platform_interface-3.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
+    },
+    {
       "name": "path",
       "rootUri": "file:///C:/Users/rafae/AppData/Local/Pub/Cache/hosted/pub.dev/path-1.9.1",
       "packageUri": "lib/",
@@ -728,6 +740,12 @@
       "languageVersion": "3.3"
     },
     {
+      "name": "win32",
+      "rootUri": "file:///C:/Users/rafae/AppData/Local/Pub/Cache/hosted/pub.dev/win32-5.13.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
       "name": "xdg_directories",
       "rootUri": "file:///C:/Users/rafae/AppData/Local/Pub/Cache/hosted/pub.dev/xdg_directories-1.1.0",
       "packageUri": "lib/",
@@ -758,7 +776,7 @@
       "languageVersion": "3.7"
     }
   ],
-  "generated": "2025-07-07T09:20:52.341365Z",
+  "generated": "2025-07-10T15:49:14.247325Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///C:/flutter",
