@@ -129,21 +129,21 @@ class _WelcomePanelState extends State<WelcomePanel> {
                     title: 'Explora Rutas',
                     description: 'Descubre las mejores rutas para tus viajes y llega a tu destino sin complicaciones.',
                     // Elige la imagen según el tema actual.
-                    imagePath: widget.isDarkMode ? 'assets/images/MapB.png' : 'assets/images/MapW.png',
+                    imagePath: 'bus_1.jpg',
                   ),
                   // Segunda página de bienvenida con imagen adaptable al tema.
                   WelcomePage(
                     title: 'Gestión de Envíos',
                     description: 'Administra tus paquetes y sigue su progreso en tiempo real, desde el origen hasta la entrega.',
                     // Elige la imagen según el tema actual.
-                    imagePath: widget.isDarkMode ? 'assets/images/shipping_dark.png' : 'assets/images/shipping_light.png',
+                    imagePath:'map_1.jpg',
                   ),
                   // Tercera página de bienvenida con imagen adaptable al tema.
                   WelcomePage(
                     title: 'Conecta con Conductores',
                     description: 'Encuentra conductores disponibles y coordina tus viajes de manera eficiente.',
                     // Elige la imagen según el tema actual.
-                    imagePath: widget.isDarkMode ? 'assets/images/driver_dark.png' : 'assets/images/driver_light.png',
+                    imagePath:'bus_2.jpg',
                   ),
                 ],
               ),
