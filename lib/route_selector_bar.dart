@@ -4,20 +4,23 @@ import 'custom_dropdown_menu.dart'; // Make sure this is imported
 
 // Define a simple data structure for your route options
 class RouteOption {
-  final String id; // Added back: Crucial for fetching stops from Supabase
   final String name;
-  final VoidCallback onTap; // Still here, but the main selection uses onRouteSelected
+  final VoidCallback onTap;
 
-  RouteOption({required this.id, required this.name, required this.onTap});
+  RouteOption({required this.name, required this.onTap});
 }
 
 class RouteSelectorBar extends StatefulWidget {
+  // topPosition is no longer used internally by RouteSelectorBar's build method,
+  // but it's passed from DashboardClient, so we'll remove it from here.
+  // final double topPosition; // REMOVE THIS PARAMETER
   final String currentRouteName;
   final List<RouteOption> routeOptions;
   final ValueChanged<RouteOption> onRouteSelected; // Callback when a route is selected
 
   const RouteSelectorBar({
     Key? key,
+    // this.topPosition, // REMOVE FROM CONSTRUCTOR
     required this.currentRouteName,
     required this.routeOptions,
     required this.onRouteSelected,
@@ -55,7 +58,7 @@ class _RouteSelectorBarState extends State<RouteSelectorBar> {
         ),
         onTap: () {
           _hideOverlay(); // Hide overlay first
-          widget.onRouteSelected(option); // Pass the entire option back to the parent
+          widget.onRouteSelected(option); // Then call the parent callback
         },
       );
     }).toList();
@@ -78,7 +81,7 @@ class _RouteSelectorBarState extends State<RouteSelectorBar> {
             child: CustomDropdownMenu( // Reusing your generic CustomDropdownMenu
               onCloseMenu: _hideOverlay,
               menuItems: routeMenuItems, // Pass the dynamically created ListTiles
-              topPosition: 0, // This value is ignored by CustomDropdownMenu when used in an Overlay directly
+              topPosition: 0, // Ignored by CustomDropdownMenu in Overlay context
             ),
           ),
         ],
@@ -90,6 +93,7 @@ class _RouteSelectorBarState extends State<RouteSelectorBar> {
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
+    // REMOVED Positioned here. This widget now just builds the bar itself.
     return GestureDetector(
       onTap: () {
         if (_overlayEntry == null) {

@@ -9,7 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // Import your custom widgets
 import 'top_bar.dart';
 import 'custom_dropdown_menu.dart';
-import 'route_selector_bar.dart'; // This is where RouteOption is defined
+import 'route_selector_bar.dart';
 import 'driver_profile_menu_body.dart'; // Import the driver-specific menu
 
 // Import your dashboard screens and new screens
@@ -44,42 +44,21 @@ class _DashboardDriverState extends State<DashboardDriver> {
     super.initState();
     _fetchUserName(); // Call the method to fetch the username
 
-    // --- FIX START: Add 'id' parameter to RouteOption constructors ---
     _availableRoutes = [
-      RouteOption(
-        id: "main_route", // Added 'id'
-        name: "Ruta Principal",
-        onTap: () {
-          print("Selected: Ruta Principal (ID: main_route)");
-          // In a real scenario, you might want to fetch and display stops for this ID
-          // _fetchAndDisplayRouteStops("main_route");
-        },
-      ),
-      RouteOption(
-        id: "route_2", // Added 'id'
-        name: "Ruta 2",
-        onTap: () {
-          print("Selected: Ruta 2 (ID: route_2)");
-        },
-      ),
-      RouteOption(
-        id: "route_3", // Added 'id'
-        name: "Ruta 3",
-        onTap: () {
-          print("Selected: Ruta 3 (ID: route_3)");
-        },
-      ),
-      RouteOption(
-        id: "all_routes", // Added 'id'
-        name: "Ver todas las Rutas",
-        onTap: () {
-          print("Selected: Ver todas las Rutas (ID: all_routes)");
-          // This might trigger a different behavior, like showing all bus stops
-          // or a general map view without a specific route polyline.
-        },
-      ),
+      RouteOption(name: "Ruta Principal", onTap: () {
+        print("Selected: Ruta Principal");
+        // Add logic to update map or other UI based on route
+      }),
+      RouteOption(name: "Ruta 2", onTap: () {
+        print("Selected: Ruta 2");
+      }),
+      RouteOption(name: "Ruta 3", onTap: () {
+        print("Selected: Ruta 3");
+      }),
+      RouteOption(name: "Ver todas las Rutas", onTap: () {
+        print("Selected: Ver todas las Rutas");
+      }),
     ];
-    // --- FIX END ---
   }
 
   // --- NEW METHOD TO FETCH USERNAME ---
@@ -94,12 +73,9 @@ class _DashboardDriverState extends State<DashboardDriver> {
             .eq('id', user.id)
             .single();
 
-        if (mounted) {
-          // Check if the widget is still in the tree
+        if (mounted) { // Check if the widget is still in the tree
           setState(() {
-            _userName = response['username'] as String? ??
-                user.email ??
-                "Conductor"; // Use username, fallback to email, then "Conductor"
+            _userName = response['username'] as String? ?? user.email ?? "Conductor"; // Use username, fallback to email, then "Conductor"
           });
         }
       } else {
@@ -120,20 +96,19 @@ class _DashboardDriverState extends State<DashboardDriver> {
   }
   // --- END NEW METHOD ---
 
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _profileMenuItems = [
-      DriverProfileMenuBody(
-        // Use the NEW DriverProfileMenuBody
+      DriverProfileMenuBody( // Use the NEW DriverProfileMenuBody
         onCloseMenu: _closeProfileMenu,
         onShowDashboardSelector: () => _showDashboardSelector(context),
         onLogout: _handleLogout,
         onNavigateToSettings: _navigateToUserSettings,
-        onCreateOrganization: _navigateToCreateOrganization,
+        onCreateOrganization: _navigateToCreateOrganization, // Still pass this, as it's required by the base ProfileMenuBody constructor
         onNavigateToSupport: _navigateToSupport,
-        onNavigateToEditOrganization:
-            _navigateToEditOrganizationSettings, // Pass the handler for the new button
+        onNavigateToEditOrganization: _navigateToEditOrganizationSettings, // Pass the handler for the new button
       ),
     ];
   }
@@ -205,17 +180,12 @@ class _DashboardDriverState extends State<DashboardDriver> {
     );
   }
 
-  // --- MODIFIED: _handleRouteSelected now receives the RouteOption ---
   void _handleRouteSelected(RouteOption selectedRoute) {
     setState(() {
       _currentRouteName = selectedRoute.name;
     });
-    // Call the onTap defined within the RouteOption for specific behavior
     selectedRoute.onTap();
-    // You might also want to trigger map updates here based on selectedRoute.id
-    // For example: _mapScreenKey.currentState?.loadRouteStops(selectedRoute.id);
   }
-  // --- END MODIFIED ---
 
   Future<void> _openQrScanner() async {
     final String? scannedCode = await Navigator.push(
@@ -281,19 +251,17 @@ class _DashboardDriverState extends State<DashboardDriver> {
   Widget build(BuildContext context) {
     final double topBarHeight = kToolbarHeight + _topPadding + 10;
 
+
     return Scaffold(
       body: Stack(
         children: [
-          // If the MapScreen in driver dashboard also needs route stops,
-          // you'll need a mechanism to pass them, possibly from a selected route.
-          // For now, it remains without routeStops parameter.
           const MapScreen(),
 
           Column(
             children: [
               TopBar(
                 onMenuPressed: _toggleProfileMenu,
-                userName: _userName, // Display fetched name or a loading text
+                userName: _userName ?? "Cargando...", // Display fetched name or a loading text
                 topPadding: _topPadding,
               ),
               RouteSelectorBar(
@@ -334,7 +302,7 @@ class _DashboardDriverState extends State<DashboardDriver> {
                 child: CustomDropdownMenu(
                   onCloseMenu: _closeProfileMenu,
                   menuItems: _profileMenuItems,
-                  topPosition: 0, // This is ignored when used in a Positioned widget directly
+                  topPosition: 0,
                 ),
               ),
             ),
