@@ -42,22 +42,21 @@ class _RouteListScreenState extends State<RouteListScreen> {
     }
 
     try {
-      // Primero, obtener la organización a la que pertenece el usuario (si es admin)
-      // Asumiendo que el usuario admin está vinculado a una organización a través de user_organizations
-      final List<dynamic> userOrgResponse = await supabase
-          .from('user_organizations')
-          .select('organization_id')
-          .eq('user_id', userId)
-          .eq('role_in_organization', 'admin') // Solo si el usuario es admin de esa organización
-          .limit(1);
+      // Query the 'organizations' table to find the organization created by the current user.
+      final List<dynamic> orgResponse = await supabase
+          .from('organizations') // Query the organizations table
+          .select('id') // Select the organization's ID
+          .eq('created_by', userId) // Where the organization was created by the current user
+          .limit(1); // Assuming a user manages routes for their primary created organization
 
-      if (userOrgResponse.isNotEmpty && userOrgResponse.first['organization_id'] != null) {
-        _organizationId = userOrgResponse.first['organization_id'] as String;
-        await _fetchRoutes(); // Ahora que tenemos la organización, podemos buscar sus rutas
+      if (orgResponse.isNotEmpty && orgResponse.first['id'] != null) {
+        _organizationId = orgResponse.first['id'] as String; // The organization's ID is in the 'id' column
+        debugPrint('RouteListScreen: Organization ID found for user: $_organizationId');
+        await _fetchRoutes(); // Now that we have the organization, we can fetch its routes
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No se encontró una organización asociada a este administrador.')),
+            const SnackBar(content: Text('No se encontró una organización creada por este usuario.')),
           );
         }
         setState(() {
@@ -65,6 +64,7 @@ class _RouteListScreenState extends State<RouteListScreen> {
         });
       }
     } on PostgrestException catch (e) {
+      debugPrint('RouteListScreen: PostgrestException al obtener la organización: ${e.message}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al obtener la organización: ${e.message}')),
@@ -74,6 +74,7 @@ class _RouteListScreenState extends State<RouteListScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('RouteListScreen: Error inesperado al obtener la organización: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ocurrió un error inesperado al obtener la organización: $e')),
@@ -88,6 +89,11 @@ class _RouteListScreenState extends State<RouteListScreen> {
   // Fetches routes associated with the current organization
   Future<void> _fetchRoutes() async {
     if (_organizationId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo determinar la organización del usuario para cargar las rutas.')),
+        );
+      }
       setState(() {
         _isLoading = false;
       });
@@ -97,8 +103,8 @@ class _RouteListScreenState extends State<RouteListScreen> {
     try {
       final List<dynamic> response = await Supabase.instance.client
           .from('routes')
-          .select('id, name, description')
-          .eq('organization_id', _organizationId!) // <-- Corrección aquí: Usar el operador de aserción nula
+          .select('id, name')
+          .eq('organization_id', _organizationId!) // Filter by the fetched organization_id
           .order('created_at', ascending: false);
 
       if (mounted) {
@@ -108,6 +114,7 @@ class _RouteListScreenState extends State<RouteListScreen> {
         });
       }
     } on PostgrestException catch (e) {
+      debugPrint('RouteListScreen: PostgrestException al cargar rutas: ${e.message}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al cargar rutas: ${e.message}')),
@@ -117,6 +124,7 @@ class _RouteListScreenState extends State<RouteListScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('RouteListScreen: Error inesperado al cargar rutas: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ocurrió un error inesperado al cargar rutas: $e')),
@@ -185,12 +193,25 @@ class _RouteListScreenState extends State<RouteListScreen> {
                 ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const RouteCreationScreen()),
-          );
-          // Al volver de la pantalla de creación, recargar las rutas
-          _fetchUserOrganizationAndRoutes();
+          // Pass the organization ID to the creation screen
+          if (_organizationId != null) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RouteCreationScreen(
+                  organizationId: _organizationId!, // Pass the organization ID
+                ),
+              ),
+            );
+            // On return from the creation screen, reload the routes
+            _fetchUserOrganizationAndRoutes();
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No se puede crear una ruta sin una organización asociada. Por favor, asegúrese de haber creado una organización.')),
+              );
+            }
+          }
         },
         label: const Text('Crear Nueva Ruta'),
         icon: const Icon(Icons.add),

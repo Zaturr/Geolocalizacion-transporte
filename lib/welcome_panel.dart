@@ -19,11 +19,15 @@ class WelcomePage extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Muestra la imagen desde la ruta proporcionada.
-        Image.asset(
-          imagePath,
-          height: 80, // Ajusta el tamaño de la imagen según sea necesario.
-          width: 80,
+        // Muestra la imagen desde la ruta proporcionada con tamaño ajustado y bordes redondeados.
+        ClipRRect( // ClipRRect se usa para redondear los bordes de la imagen.
+          borderRadius: BorderRadius.circular(20.0), // Radio para los bordes redondeados.
+          child: Image.asset(
+            imagePath,
+            height: 220, // Reduced height to prevent overflow.
+            width: 220, // Reduced width to prevent overflow.
+            fit: BoxFit.cover, // Ensures the image covers the space without distorting.
+          ),
         ),
         const SizedBox(height: 20),
         Text(
@@ -34,7 +38,7 @@ class WelcomePage extends StatelessWidget {
               ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 20),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Text(
@@ -83,7 +87,7 @@ class _WelcomePanelState extends State<WelcomePanel> {
       width: widget.currentPage == index ? 25 : 10, // Más ancho si es la página actual.
       decoration: BoxDecoration(
         // Usa el color primario del esquema de Material Design para el punto activo.
-        color: widget.currentPage == index ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+        color: widget.currentPage == index ? Theme.of(context).colorScheme.secondaryContainer : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
         borderRadius: BorderRadius.circular(5),
       ),
     );
@@ -102,8 +106,8 @@ class _WelcomePanelState extends State<WelcomePanel> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          // Usa el color de superficie del esquema de Material Design.
-          color: Theme.of(context).colorScheme.surface,
+          // Usa el color de superficie del esquema de Material Design para adaptarse al tema.
+          color: Theme.of(context).colorScheme.secondaryContainer,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(30),
             topRight: Radius.circular(30),
@@ -129,26 +133,26 @@ class _WelcomePanelState extends State<WelcomePanel> {
                     title: 'Explora Rutas',
                     description: 'Descubre las mejores rutas para tus viajes y llega a tu destino sin complicaciones.',
                     // Elige la imagen según el tema actual.
-                    imagePath: 'bus_1.jpg',
+                    imagePath: 'assets/bus_1.jpg',
                   ),
                   // Segunda página de bienvenida con imagen adaptable al tema.
                   WelcomePage(
                     title: 'Gestión de Envíos',
                     description: 'Administra tus paquetes y sigue su progreso en tiempo real, desde el origen hasta la entrega.',
                     // Elige la imagen según el tema actual.
-                    imagePath:'map_1.jpg',
+                    imagePath:'assets/map_1.jpg',
                   ),
                   // Tercera página de bienvenida con imagen adaptable al tema.
                   WelcomePage(
                     title: 'Conecta con Conductores',
                     description: 'Encuentra conductores disponibles y coordina tus viajes de manera eficiente.',
                     // Elige la imagen según el tema actual.
-                    imagePath:'bus_2.jpg',
+                    imagePath:'assets/bus_2.jpg',
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             // Indicadores de página (los puntos en la parte inferior).
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -170,8 +174,8 @@ class _WelcomePanelState extends State<WelcomePanel> {
                     },
                     style: ElevatedButton.styleFrom(
                       // Usa los colores del esquema de Material Design.
-                      backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                      foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
                       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),

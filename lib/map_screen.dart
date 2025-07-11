@@ -9,7 +9,10 @@ import 'package:android_intent_plus/android_intent.dart'; // For Android locatio
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  // NEW: Accept routeStops in the constructor
+  final List<Map<String, dynamic>> routeStops;
+
+  const MapScreen({Key? key, this.routeStops = const []}) : super(key: key);
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -34,14 +37,26 @@ class _MapScreenState extends State<MapScreen> {
   Timer? _simulationTimer; // New: Timer for bus movement simulation
   bool _isBusSimulating = false; // New: Flag to control simulation start/stop
 
-  final String _busStopsTable = 'paradas';
-  final _supabase = Supabase.instance.client;
+  // Removed direct Supabase client as fetching is now handled by DashboardClient
+  // final String _busStopsTable = 'paradas';
+  // final _supabase = Supabase.instance.client;
 
   @override
   void initState() {
     super.initState();
-    // Initialize map components: permissions, icons, and fetch data
+    // Initialize map components: permissions, icons
     _initializeMap();
+    // Process initial route stops passed from the DashboardClient
+    _updateMarkersAndPolyline(widget.routeStops);
+  }
+
+  @override
+  void didUpdateWidget(covariant MapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the routeStops change, update the markers and polyline
+    if (widget.routeStops != oldWidget.routeStops) {
+      _updateMarkersAndPolyline(widget.routeStops);
+    }
   }
 
   @override
@@ -54,12 +69,12 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  /// Initializes map components: checks permissions, loads custom icons, and fetches bus stops.
+  /// Initializes map components: checks permissions, loads custom icons.
+  /// (Removed _fetchBusStopsFromSupabase from here as it's now external)
   Future<void> _initializeMap() async {
     await _checkLocationPermission();
     await _loadCustomMarkerIcons();
-    await _loadBusIcon(); // New: Load bus icon
-    await _fetchBusStopsFromSupabase();
+    await _loadBusIcon(); // Load bus icon
     // _isLoading will be set to false in _startLocationUpdates after getting initial position
   }
 
@@ -80,15 +95,11 @@ class _MapScreenState extends State<MapScreen> {
 
   /// New: Loads the custom icon for the simulated bus.
   Future<void> _loadBusIcon() async {
-  _busIcon = await _resizeAndConvert(
+    _busIcon = await _resizeAndConvert(
       assetPath: 'assets/bus_icon.png', // Ensure this asset is in your pubspec.yaml
       scale: 3, // Scale factor for the icon size
     );
   }
-  
-
-      
-
 
   /// Resizes an image asset and converts it to a BitmapDescriptor.
   Future<BitmapDescriptor> _resizeAndConvert({
@@ -110,82 +121,83 @@ class _MapScreenState extends State<MapScreen> {
     return BitmapDescriptor.fromBytes(byteData.buffer.asUint8List());
   }
 
-  /// Fetches bus stop data from Supabase and adds them as markers and a polyline to the map.
-  Future<void> _fetchBusStopsFromSupabase() async {
-    try {
-      // Fetch all bus stops and order them by 'id' to ensure a consistent sequence for the route
-      final List<dynamic> response = await _supabase
-          .from(_busStopsTable)
-          .select('id, "Nombre_Parada", "Coordenadas"') // Corrected: Using "Nombre_Parada" to match database casing
-          .order('id', ascending: true); // Order by id for consistent route generation
+  /// MODIFIED: This method now takes a list of stops and updates the map.
+  /// It no longer fetches from Supabase directly.
+  void _updateMarkersAndPolyline(List<Map<String, dynamic>> stops) {
+    if (!mounted) return;
 
-      if (response.isNotEmpty && mounted) {
-        setState(() {
-          // Clear existing bus stop markers and polylines before adding new ones
-          _markers.removeWhere((marker) => marker.markerId.value.startsWith('busStop_'));
-          _polylines.clear();
-          _busStopCoordinates.clear(); // Clear the list before repopulating
+    setState(() {
+      // Clear existing bus stop markers and polylines before adding new ones
+      _markers.removeWhere((marker) => marker.markerId.value.startsWith('busStop_'));
+      _polylines.clear();
+      _busStopCoordinates.clear(); // Clear the list before repopulating
 
-          for (final stop in response) {
-            final String? id = stop['id'] as String?;
-            final String? name = stop['Nombre_Parada'] as String?; // Corrected: Accessing "Nombre_Parada"
-            final String? coordinatesRaw = stop['Coordenadas'] as String?; // Kept as is (quoted in SQL)
+      for (final stop in stops) {
+        final String? name = stop['Nombre_Parada'] as String?;
+        final String? coordinatesRaw = stop['Coordenadas'] as String?;
 
-            if (id != null && name != null && coordinatesRaw != null) {
-              final LatLng? coordinates = _parseCoordinates(coordinatesRaw);
-              if (coordinates != null) {
-                // Add marker for all bus stops
-                _markers.add(
-                  Marker(
-                    markerId: MarkerId('busStop_$id'),
-                    position: coordinates,
-                    icon: _busStopIcon,
-                    anchor: const Offset(0.5, 0.5),
-                    infoWindow: InfoWindow(
-                      title: name,
-                      snippet: 'ID: $id',
-                    ),
-                  ),
-                );
-                // Add all bus stop coordinates to the list for the polyline
-                _busStopCoordinates.add(coordinates);
-              }
-            }
-          }
-
-          // Create a polyline covering all fetched bus stops
-          if (_busStopCoordinates.length >= 2) {
-            _polylines.add(
-              Polyline(
-                polylineId: const PolylineId('all_bus_stop_route'), // Unique ID for the polyline
-                points: _busStopCoordinates,
-                color: Colors.red, // Color of the route line
-                width: 5, // Width of the route line
-                jointType: JointType.round, // Smooth joints
-                startCap: Cap.roundCap, // Round caps at start
-                endCap: Cap.roundCap, // Round caps at end
+        if (name != null && coordinatesRaw != null) {
+          final LatLng? coordinates = _parseCoordinates(coordinatesRaw);
+          if (coordinates != null) {
+            // Add marker for bus stops
+            _markers.add(
+              Marker(
+                markerId: MarkerId('busStop_${stops.indexOf(stop)}'), // Use index for unique ID
+                position: coordinates,
+                icon: _busStopIcon,
+                anchor: const Offset(0.5, 0.5),
+                infoWindow: InfoWindow(
+                  title: name,
+                  snippet: 'Parada',
+                ),
               ),
             );
-            // Set initial simulated bus position to the first bus stop
-            _simulatedBusPosition = _busStopCoordinates.first;
-            _updateSimulatedBusMarker(); // New: Add the bus marker initially
-          } else if (_busStopCoordinates.length < 2 && mounted) {
-            // Show a message if there are not enough points to draw a polyline
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No hay suficientes paradas de bus para crear una ruta.')),
-            );
+            // Add all bus stop coordinates to the list for the polyline
+            _busStopCoordinates.add(coordinates);
           }
-        });
+        }
       }
-    } catch (e) {
-      if (mounted) {
-        // Show a snackbar with the error message if fetching fails
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar paradas de bus: $e')),
+
+      // Create a polyline covering all fetched bus stops for the current route
+      if (_busStopCoordinates.length >= 2) {
+        _polylines.add(
+          Polyline(
+            polylineId: const PolylineId('current_route_polyline'), // Unique ID for the polyline
+            points: _busStopCoordinates,
+            color: Colors.red, // Color of the route line
+            width: 5, // Width of the route line
+            jointType: JointType.round, // Smooth joints
+            startCap: Cap.roundCap, // Round caps at start
+            endCap: Cap.roundCap, // Round caps at end
+          ),
         );
+        // Set initial simulated bus position to the first bus stop of the new route
+        _simulatedBusPosition = _busStopCoordinates.first;
+        _busRouteIndex = 0; // Reset bus index for new route
+        _updateSimulatedBusMarker(); // Update the bus marker's position
+        // If simulation was active, restart it for the new route
+        if (_isBusSimulating) {
+          _stopBusSimulation();
+          _startBusSimulation();
+        }
+      } else {
+        // If less than 2 stops, clear bus simulation and show message
+        _stopBusSimulation();
+        _simulatedBusPosition = null; // Clear bus position
+        _updateSimulatedBusMarker(); // Remove bus marker
+        if (_busStopCoordinates.isNotEmpty) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No hay suficientes paradas para trazar una ruta.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No hay paradas para la ruta seleccionada.')),
+          );
+        }
       }
-    }
+    });
   }
+
 
   /// Parses a coordinate string "latitude,longitude" into a LatLng object.
   LatLng? _parseCoordinates(String coordinatesString) {
@@ -304,7 +316,10 @@ class _MapScreenState extends State<MapScreen> {
           position: _simulatedBusPosition!,
           icon: _busIcon, // Use the custom bus icon
           anchor: const Offset(0.5, 0.5),
-          infoWindow: InfoWindow(title: 'Bus Simulado', snippet: 'Parada ${_busRouteIndex + 1}'),
+          infoWindow: InfoWindow(
+            title: 'Bus Simulado',
+            snippet: 'Parada ${(_busRouteIndex + 1).toString().padLeft(2, '0')}', // Formats to "01", "02", etc.
+          ),
         ),
       );
     }
@@ -420,7 +435,8 @@ class _MapScreenState extends State<MapScreen> {
       _isBusSimulating = true;
     });
 
-    _simulationTimer = Timer.periodic(const Duration(seconds: 1), (timer) { // Changed to 1 second for faster demo, change to 60 for 1 minute
+    _simulationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // Changed to 1 second for faster demo, change to 60 for 1 minute
       _moveBusToNextStop();
     });
   }
@@ -435,19 +451,15 @@ class _MapScreenState extends State<MapScreen> {
 
   /// Moves the simulated bus to the next stop in the route.
   void _moveBusToNextStop() {
-    if (!mounted || _busStopCoordinates.isEmpty) return;
+    if (!mounted || _busStopCoordinates.isEmpty) {
+      _stopBusSimulation(); // Stop simulation if no stops or widget disposed
+      return;
+    }
 
     setState(() {
       _busRouteIndex = (_busRouteIndex + 1) % _busStopCoordinates.length;
       _simulatedBusPosition = _busStopCoordinates[_busRouteIndex];
       _updateSimulatedBusMarker();
-
-      // Removed camera animation to prevent automatic movement
-      // if (_mapController != null) {
-      //   _mapController!.animateCamera(
-      //     CameraUpdate.newLatLng(_simulatedBusPosition!),
-      //   );
-      // }
     });
   }
 

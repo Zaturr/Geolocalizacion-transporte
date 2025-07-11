@@ -3,26 +3,28 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Para Supabase
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gm; // Alias para evitar conflictos con latlong2
 import 'dart:async'; // Para usar Timer
-
 import 'route_creation_map_widget.dart'; // Importa el nuevo widget de mapa
 
 class RouteCreationScreen extends StatefulWidget {
-  const RouteCreationScreen({Key? key}) : super(key: key);
+  // Add the organizationId parameter here
+  final String organizationId;
+
+  const RouteCreationScreen({
+    Key? key,
+    required this.organizationId, // Mark it as required
+  }) : super(key: key);
 
   @override
   State<RouteCreationScreen> createState() => _RouteCreationScreenState();
 }
 
 class _RouteCreationScreenState extends State<RouteCreationScreen> {
-  // LatLng del paquete google_maps_flutter para el marcador central actual
-  gm.LatLng _currentMarkerLatLng = const gm.LatLng(10.4801, -66.9036); // Coordenadas iniciales (ej. Caracas)
-  List<Map<String, dynamic>> _stops = []; // Lista para almacenar las paradas
-  bool _isLoading = false; // Estado de carga para operaciones de base de datos
+  gm.LatLng _currentMarkerLatLng = const gm.LatLng(10.4801, -66.9036);
+  List<Map<String, dynamic>> _stops = [];
+  bool _isLoading = false;
 
-  // Lista de marcadores para las paradas ya agregadas, para pasarlos al mapa
   Set<gm.Marker> _addedStopMarkers = {};
 
-  // Variables para el mensaje personalizado en la parte superior
   String? _topMessage;
   Color? _topMessageColor;
   bool _showTopMessage = false;
@@ -31,21 +33,18 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
   @override
   void initState() {
     super.initState();
-    // Puedes obtener la ubicación actual del usuario aquí para la posición inicial del mapa
-    // y actualizar _currentMarkerLatLng.
     debugPrint('RouteCreationScreen: initState - Pantalla de creación de ruta inicializada.');
+    debugPrint('RouteCreationScreen: organizationId recibido: ${widget.organizationId}'); // Verify the ID
   }
 
   @override
   void dispose() {
-    _messageTimer?.cancel(); // Cancela el temporizador si el widget se desecha
+    _messageTimer?.cancel();
     debugPrint('RouteCreationScreen: dispose - Recursos de la pantalla de creación de ruta liberados.');
     super.dispose();
   }
 
-  // Muestra un mensaje personalizado en la parte superior del mapa
   void _showCustomTopMessage(String message, {Color? backgroundColor}) {
-    // Cancela cualquier temporizador anterior para que el nuevo mensaje no se oculte prematuramente
     _messageTimer?.cancel();
 
     setState(() {
@@ -54,7 +53,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
       _showTopMessage = true;
     });
 
-    // Configura un temporizador para ocultar el mensaje después de 3 segundos
     _messageTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         setState(() {
@@ -65,7 +63,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
     debugPrint('RouteCreationScreen: Mensaje superior mostrado: "$message"');
   }
 
-  // Callback para cuando la cámara del mapa se detiene
   void _onMapCameraIdle(gm.LatLng newCenter) {
     setState(() {
       _currentMarkerLatLng = newCenter;
@@ -73,7 +70,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
     debugPrint('RouteCreationScreen: onMapCameraIdle - Marcador central actualizado a Lat: ${newCenter.latitude}, Lon: ${newCenter.longitude}');
   }
 
-  // Muestra un diálogo para que el usuario ingrese el nombre de la parada
   Future<void> _addStop() async {
     debugPrint('RouteCreationScreen: _addStop - Intentando agregar una parada.');
     final TextEditingController stopNameController = TextEditingController();
@@ -103,13 +99,11 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
                   Navigator.pop(context, stopNameController.text.trim());
                 } else {
                   debugPrint('RouteCreationScreen: _addStop - Error: El nombre de la parada está vacío.');
-                  // Usa el mensaje personalizado en lugar de SnackBar
                   _showCustomTopMessage('El nombre de la parada no puede estar vacío.', backgroundColor: Colors.orange);
                 }
               },
             ),
           ],
-          // Cambia el color de fondo del AlertDialog
           backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
         );
       },
@@ -122,12 +116,11 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
           'latitude': _currentMarkerLatLng.latitude,
           'longitude': _currentMarkerLatLng.longitude,
         });
-        // Añade un marcador para la parada recién agregada
         _addedStopMarkers.add(
           gm.Marker(
             markerId: gm.MarkerId('stop_${_stops.length}'),
             position: _currentMarkerLatLng,
-            icon: gm.BitmapDescriptor.defaultMarkerWithHue(gm.BitmapDescriptor.hueRed), // Marcador rojo para paradas
+            icon: gm.BitmapDescriptor.defaultMarkerWithHue(gm.BitmapDescriptor.hueRed),
             infoWindow: gm.InfoWindow(title: stopName),
           ),
         );
@@ -139,7 +132,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
     }
   }
 
-  // Finaliza la creación de la ruta y guarda los datos en Supabase
   Future<void> _finishRoute() async {
     debugPrint('RouteCreationScreen: _finishRoute - Intentando finalizar y guardar la ruta.');
     if (_stops.length < 2) {
@@ -147,6 +139,20 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
         debugPrint('RouteCreationScreen: _finishRoute - Error: Menos de 2 paradas. Actuales: ${_stops.length}');
         _showCustomTopMessage('Una ruta debe tener al menos 2 paradas.', backgroundColor: Colors.orange);
       }
+      return;
+    }
+
+    // Check if organizationId is available before proceeding
+    // Note: widget.organizationId is a required String, so it won't be null.
+    // This null check can technically be removed if you are certain it's always passed.
+    // However, keeping it doesn't hurt and adds a layer of safety.
+    if (widget.organizationId == null) {
+      if (mounted) {
+        _showCustomTopMessage('Error: No se pudo obtener la ID de la organización para guardar la ruta.', backgroundColor: Theme.of(context).colorScheme.error);
+      }
+      setState(() {
+        _isLoading = false;
+      });
       return;
     }
 
@@ -182,7 +188,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
               },
             ),
           ],
-          // Cambia el color de fondo del AlertDialog
           backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
         );
       },
@@ -190,7 +195,7 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
 
     if (routeName == null || !mounted) {
       debugPrint('RouteCreationScreen: _finishRoute - No se finalizó la ruta (nombre nulo o widget desmontado).');
-      return; // El usuario canceló o el widget ya no está montado
+      return;
     }
 
     setState(() {
@@ -215,13 +220,15 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
 
     try {
       // 1. Insertar la nueva ruta en la tabla 'routes'
+      // Columns: id, name, created_at, created_by_uid, organization_id, visibility
       debugPrint('RouteCreationScreen: _finishRoute - Intentando insertar ruta en Supabase...');
       final List<Map<String, dynamic>> routeResponse = await supabase
           .from('routes')
           .insert({
             'name': routeName,
             'created_by_uid': userId,
-            // 'organization_id': 'tu_organization_id_aqui', // Si las rutas están vinculadas a organizaciones
+            'organization_id': widget.organizationId, // Ensure organizationId is passed
+            'visibility': true, // Assuming default visibility is true based on schema.
           })
           .select();
 
@@ -232,17 +239,19 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
 
       final String routeId = routeResponse.first['id'] as String;
       debugPrint('RouteCreationScreen: _finishRoute - Ruta insertada con ID: $routeId');
+      // Added this line for debugging foreign key issues
+      debugPrint('RouteCreationScreen: _finishRoute - Attempting to insert paradas with routeId: $routeId');
 
-      // 2. Insertar cada parada en la tabla 'paradas' vinculada a la nueva ruta
+      // 2. Insertar cada parada en la tabla 'paradas'
+      // Now using 'organizacion_id' instead of 'creado_por'
+      // Columns now are: id, Ruta (FK to routes.id), organizacion_id (FK to organizations.id), Nombre_Parada, Coordenadas
       debugPrint('RouteCreationScreen: _finishRoute - Insertando ${_stops.length} paradas...');
       for (int i = 0; i < _stops.length; i++) {
         await supabase.from('paradas').insert({
-          'route_id': routeId,
-          'nombre_parada': _stops[i]['name'],
-          'latitud': _stops[i]['latitude'],
-          'longitud': _stops[i]['longitude'],
-          'orden': i + 1, // Asignar un orden a la parada
-          'creado_por_uid': userId,
+          'Ruta': routeId, // Link to the created route ID
+          'Nombre_Parada': _stops[i]['name'], // Column name from schema (case-sensitive)
+          'Coordenadas': '${_stops[i]['latitude']},${_stops[i]['longitude']}', // Combined lat/lon into 'Coordenadas' (text)
+          'organizacion_id': widget.organizationId, // <--- CHANGED THIS LINE
         });
         debugPrint('RouteCreationScreen: _finishRoute - Parada ${i + 1} insertada: ${_stops[i]['name']}');
       }
@@ -250,22 +259,20 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
       if (mounted) {
         debugPrint('RouteCreationScreen: _finishRoute - Ruta y paradas guardadas exitosamente.');
         _showCustomTopMessage('Ruta creada y paradas guardadas exitosamente!', backgroundColor: Colors.green);
-        // MODIFICACIÓN: Añadir un retraso antes de hacer pop para que el mensaje sea visible.
-        await Future.delayed(const Duration(seconds: 2)); // Espera 2 segundos
-        if (mounted) { // Vuelve a verificar si el widget sigue montado después del retraso
-          Navigator.of(context).pop(); // Vuelve a la pantalla anterior (Dashboard Admin)
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.of(context).pop();
         }
       }
     } on PostgrestException catch (e) {
-      // MODIFICACIÓN: Captura más detalles de la PostgrestException
       String errorMessage = e.message;
-      if (e.code != null && (e.code is String) && (e.code as String).isNotEmpty) { // Añadida verificación de tipo
+      if (e.code != null && (e.code is String) && (e.code as String).isNotEmpty) {
         errorMessage += '\nCódigo: ${e.code}';
       }
-      if (e.details != null && (e.details is String) && (e.details as String).isNotEmpty) { // Añadida verificación de tipo
+      if (e.details != null && (e.details is String) && (e.details as String).isNotEmpty) {
         errorMessage += '\nDetalles: ${e.details}';
       }
-      if (e.hint != null && (e.hint is String) && (e.hint as String).isNotEmpty) { // Añadida verificación de tipo
+      if (e.hint != null && (e.hint is String) && (e.hint as String).isNotEmpty) {
         errorMessage += '\nSugerencia: ${e.hint}';
       }
 
@@ -298,16 +305,11 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
       ),
       body: Stack(
         children: [
-          // [Caja 1: Mapa Interactivo para Creación de Rutas]
-          // Utiliza el nuevo widget RouteCreationMapWidget para mostrar el mapa.
           RouteCreationMapWidget(
             initialCameraPosition: _currentMarkerLatLng,
             onCameraIdle: _onMapCameraIdle,
-            additionalMarkers: _addedStopMarkers, // Pasa los marcadores de las paradas agregadas
+            additionalMarkers: _addedStopMarkers,
           ),
-
-          // [Caja 2: Interfaz de Usuario Flotante]
-          // Botones para agregar parada y terminar ruta, y lista de paradas.
           Positioned(
             bottom: 16.0,
             left: 16.0,
@@ -315,14 +317,12 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // [Caja 2.1: Lista de Paradas Agregadas]
-                // Muestra las paradas que el usuario ha agregado a la ruta.
                 if (_stops.isNotEmpty)
                   Container(
                     constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.2),
                     padding: const EdgeInsets.all(8.0),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHigh.withOpacity(0.9), // Cambiado a surfaceContainerHigh
+                      color: Theme.of(context).colorScheme.surfaceContainerHigh.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(12.0),
                       boxShadow: [
                         BoxShadow(
@@ -343,6 +343,7 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
                             child: Text('${index + 1}', style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
                           ),
                           title: Text(stop['name'], style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                          // Display coordinates from the combined string, if desired
                           subtitle: Text('Lat: ${stop['latitude'].toStringAsFixed(4)}, Lon: ${stop['longitude'].toStringAsFixed(4)}',
                               style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
                         );
@@ -350,8 +351,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
                     ),
                   ),
                 const SizedBox(height: 16.0),
-                // [Caja 2.2: Botones de Acción]
-                // Botones para agregar una parada o finalizar la ruta.
                 Row(
                   children: [
                     Expanded(
@@ -386,8 +385,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
               ],
             ),
           ),
-          // [Caja 3: Indicador de Carga]
-          // Se muestra cuando se está realizando una operación de base de datos.
           if (_isLoading)
             Container(
               color: Colors.black.withOpacity(0.5),
@@ -395,8 +392,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
                 child: CircularProgressIndicator(),
               ),
             ),
-          // [Caja 4: Mensaje Personalizado en la Parte Superior]
-          // Muestra un mensaje temporal en la parte superior del mapa.
           Positioned(
             top: 16.0,
             left: 16.0,
@@ -408,7 +403,7 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
                   ? Material(
                       elevation: 4.0,
                       borderRadius: BorderRadius.circular(8.0),
-                      color: _topMessageColor ?? Theme.of(context).colorScheme.surfaceContainerHigh, // Cambiado a surfaceContainerHigh
+                      color: _topMessageColor ?? Theme.of(context).colorScheme.surfaceContainerHigh,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                         child: Text(

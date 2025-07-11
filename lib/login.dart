@@ -58,7 +58,8 @@ class _LoginScreenState extends State<LoginScreen> {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
           setState(() {
-            _panelHeight = MediaQuery.of(context).size.height * 0.5; // Ajusta la altura según sea necesario
+            // Aumentar la altura del panel de bienvenida a 70% de la altura de la pantalla
+            _panelHeight = MediaQuery.of(context).size.height * 0.7; // Ajusta la altura según sea necesario
           });
         }
       });
@@ -203,7 +204,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showWelcomePanelAgain() {
     setState(() {
       _showWelcomePanel = true;
-      _panelHeight = MediaQuery.of(context).size.height * 0.5; // Restablece la altura del panel
+      // Restablece la altura del panel a 70% de la altura de la pantalla
+      _panelHeight = MediaQuery.of(context).size.height * 0.7;
       _currentPage = 0; // Opcional: Reinicia a la primera página de bienvenida
     });
     // Retrasar la llamada a jumpToPage para asegurar que el PageView esté montado
