@@ -26,7 +26,7 @@ class DashboardClient extends StatefulWidget {
 
 class _DashboardClientState extends State<DashboardClient> {
   bool _isProfileMenuOpen = false;
-  String _currentRouteName = "Cargando rutas..."; // Initial state while loading
+  String _currentRouteName = "Ruta Principal";
   String? _userName; // NEW: To store the fetched username
 
   late List<RouteOption> _availableRoutes;
@@ -35,8 +35,34 @@ class _DashboardClientState extends State<DashboardClient> {
   @override
   void initState() {
     super.initState();
-    _fetchUserName(); // Call to fetch username
-    _fetchRoutes(); // NEW: Call to fetch routes from Supabase
+    _fetchUserName(); // NEW: Call to fetch username
+
+    _availableRoutes = [
+      RouteOption(
+        name: "Ruta Principal",
+        onTap: () {
+          print("Selected: Ruta Principal");
+        },
+      ),
+      RouteOption(
+        name: "Ruta 2 (Norte)",
+        onTap: () {
+          print("Selected: Ruta 2 (Norte)");
+        },
+      ),
+      RouteOption(
+        name: "Ruta 3 (Sur)",
+        onTap: () {
+          print("Selected: Ruta 3 (Sur)");
+        },
+      ),
+      RouteOption(
+        name: "Ver todas las Rutas",
+        onTap: () {
+          print("Selected: Ver todas las Rutas");
+        },
+      ),
+    ];
   }
 
   @override
@@ -51,70 +77,11 @@ class _DashboardClientState extends State<DashboardClient> {
         onCreateOrganization: _navigateToCreateOrganization,
         onNavigateToSupport:
             () => _navigateToSupport(
-                    context,
-                    _userName,
-                  ), // MODIFIED: Pass username
+                  context,
+                  _userName,
+                ), // MODIFIED: Pass username
       ),
     ];
-  }
-
-  // NEW: Method to fetch routes from Supabase
-  Future<void> _fetchRoutes() async {
-    try {
-      final response = await Supabase.instance.client
-          .from('routes') // Your Supabase table name for routes
-          .select('name'); // Select only the 'name' column
-
-      if (mounted) {
-        setState(() {
-          _availableRoutes = []; // Clear existing dummy data
-
-     
-
-          // Populate with fetched route names
-          for (var routeData in response) {
-            final routeName = routeData['name'] as String;
-            _availableRoutes.insert(0, // Insert at the beginning to have "Ver todas las Rutas" at the end
-              RouteOption(
-                name: routeName,
-                onTap: () {
-                  print("Selected: $routeName");
-                  // TODO: Implement logic for what happens when a specific route is selected
-                  // For example, update the map to show this route
-                },
-              ),
-            );
-          }
-
-          // Set the initial current route to the first one fetched or a default
-          if (_availableRoutes.isNotEmpty) {
-            _currentRouteName = _availableRoutes[0].name;
-          } else {
-            _currentRouteName = "No hay rutas disponibles";
-          }
-        });
-      }
-    } on PostgrestException catch (e) {
-      debugPrint('Error fetching routes: ${e.message}');
-      if (mounted) {
-        setState(() {
-          _currentRouteName = "Error al cargar rutas";
-          _availableRoutes = [
-            RouteOption(name: "Error al cargar", onTap: () {}),
-          ];
-        });
-      }
-    } catch (e) {
-      debugPrint('Unexpected error fetching routes: $e');
-      if (mounted) {
-        setState(() {
-          _currentRouteName = "Error desconocido";
-          _availableRoutes = [
-            RouteOption(name: "Error desconocido", onTap: () {}),
-          ];
-        });
-      }
-    }
   }
 
   // NEW: Method to fetch username from Supabase
@@ -264,19 +231,15 @@ class _DashboardClientState extends State<DashboardClient> {
   Future<void> _handleLogout() async {
     try {
       await Supabase.instance.client.auth.signOut();
-      if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-      }
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     } catch (e) {
       print("Error during logout: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
