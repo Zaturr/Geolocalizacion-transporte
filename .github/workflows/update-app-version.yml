@@ -1,0 +1,54 @@
+name: Update App Version in Supabase
+
+on:
+  # Este flujo de trabajo se ejecutará cuando se publique una nueva 'release' en GitHub.
+  # Puedes cambiarlo a 'push' a una rama específica si lo prefieres (ej. branches: [main]).
+  release:
+    types: [published]
+
+jobs:
+  update_version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # O la versión de Node.js que prefieras
+
+      - name: Get app version from pubspec.yaml
+        id: get_version
+        run: |
+          # Extrae la versión de pubspec.yaml. Asegúrate de que el formato sea 'version: X.Y.Z'
+          APP_VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "Detected app version: $APP_VERSION"
+        # Puedes modificar esto para extraer la versión del nombre del release si lo prefieres:
+        # APP_VERSION="${{ github.event.release.tag_name }}"
+        # APP_VERSION="${APP_VERSION#v}" # Elimina la 'v' inicial si tus tags son 'v1.0.0'
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Invoke Supabase Edge Function
+        env:
+          # SUPABASE_ACCESS_TOKEN es un Personal Access Token (PAT) de Supabase
+          # Necesitas crearlo en tu panel de Supabase (Account -> Access Tokens)
+          # y añadirlo como un secreto de GitHub en tu repositorio.
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          # SUPABASE_PROJECT_REF es el ID de referencia de tu proyecto Supabase.
+          # Lo encuentras en la URL de tu panel de Supabase (ej. app.supabase.com/project/<PROJECT_REF>/...)
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          # Invoca la función Edge 'update-app-version' con la nueva versión.
+          # Ajusta 'min_supported_version' según tu estrategia de actualización.
+          # Aquí, la establecemos igual a la latest_version, pero podrías tener una lógica diferente.
+          npx supabase functions invoke update-app-version \
+            --project-ref $SUPABASE_PROJECT_REF \
+            --auth-token $SUPABASE_ACCESS_TOKEN \
+            --no-verify-jwt \
+            --data '{"latest_version": "${{ env.APP_VERSION }}", "min_supported_version": "${{ env.APP_VERSION }}"}'
+          echo "Supabase Edge Function invoked successfully."
