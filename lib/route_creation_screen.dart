@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Para Supabase
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gm; // Alias para evitar conflictos con latlong2
 import 'dart:async'; // Para usar Timer
-import 'route_creation_map_widget.dart'; // Importa el nuevo widget de mapa
+import 'widget/route_creation_map_widget.dart'; // Importa el nuevo widget de mapa
 
 class RouteCreationScreen extends StatefulWidget {
   // Add the organizationId parameter here
