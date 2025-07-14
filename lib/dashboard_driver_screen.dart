@@ -11,20 +11,23 @@ import 'widget/top_bar.dart';
 import 'widget/custom_dropdown_menu.dart';
 import 'widget/route_selector_bar.dart';
 import 'widget/driver_profile_menu_body.dart';
+//import 'widget/Path_Request.dart'; // NEW: Import the new screen
 
 // Import your dashboard screens and new screens
 import 'dashboard_admin_screen.dart';
 import 'dashboard_client_screen.dart';
-import 'widget/map_screen.dart';
+//import 'widget/map_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'user_settings_screen.dart';
 import 'create_organization_screen.dart';
 import 'support_screen.dart';
 import 'edit_organization_settings_screen.dart';
 
-// NEW IMPORTS for data service and models
+// Import services and models for routes
 import 'package:PathFinder/services/map_data_service.dart';
 import 'package:PathFinder/models/map_models.dart';
+//import 'package:PathFinder/widget/Path_Request.dart';
+
 
 class DashboardDriver extends StatefulWidget {
   const DashboardDriver({super.key});
@@ -45,7 +48,8 @@ class _DashboardDriverState extends State<DashboardDriver> {
   late MapDataService _mapDataService;
   List<Route> _fetchedRoutes = [];
   bool _isLoadingRoutes = true;
-  final GlobalKey<MapViewWidgetState> _mapViewKey = GlobalKey<MapViewWidgetState>();
+  // Removed GlobalKey<MapViewWidgetState> as MapViewWidget is no longer here
+  // final GlobalKey<MapViewWidgetState> _mapViewKey = GlobalKey<MapViewWidgetState>();
 
   @override
   void initState() {
@@ -114,7 +118,8 @@ class _DashboardDriverState extends State<DashboardDriver> {
 
           if (_availableRoutes.isNotEmpty) {
             _currentRouteName = _availableRoutes.first.name;
-            _fetchAndLoadPolylineAndBusStops(_availableRoutes.first.route.id); // MODIFIED
+            // Removed direct call to _fetchAndLoadPolylineAndBusStops as it's now handled by navigation
+            // when a route is explicitly selected.
           } else {
             _currentRouteName = "No hay rutas disponibles";
           }
@@ -140,23 +145,23 @@ class _DashboardDriverState extends State<DashboardDriver> {
     }
   }
 
-  // MODIFIED: Fetches polyline AND bus stops, then updates the map
-  Future<void> _fetchAndLoadPolylineAndBusStops(String routeId) async {
-    try {
-      // Fetch polyline
-      final polylineCoordinates = await _mapDataService.fetchPolylineForRoute(routeId);
-      _mapViewKey.currentState?.updatePolyline(polylineCoordinates);
-
-      // Fetch bus stops for the route
-      final busStops = await _mapDataService.fetchBusStopsForRoute(routeId);
-      _mapViewKey.currentState?.updateBusStops(busStops); // NEW: Update bus stops
-    } catch (e) {
-      print("Error loading route data for driver route $routeId: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al cargar datos de la ruta del conductor: $e")),
-      );
-    }
+  // MODIFIED: This method now *navigates* to the PathRequestScreen
+  // It takes both routeId and routeName to pass to PathRequestScreen
+  Future<void> _fetchAndLoadPolylineAndBusStops(String routeId, String routeName) async {
+    print("DashboardDriver: Preparing to show map for route ID: $routeId and Name: $routeName");
+    
+    // Navigate to the new PathRequestScreen, passing the necessary route information
+   // Navigator.push(
+      //context,
+//MaterialPageRoute(
+       // builder: (context) => PathRequestScreen(
+         // routeId: routeId,
+         // routeName: routeName,
+       // ),
+      //),
+    //);
   }
+
 
   @override
   void didChangeDependencies() {
@@ -241,12 +246,13 @@ class _DashboardDriverState extends State<DashboardDriver> {
     );
   }
 
-  // MODIFIED: _handleRouteSelected to call the combined fetch method
+  // MODIFIED: _handleRouteSelected now passes routeName and ID to _fetchAndLoadPolylineAndBusStops
   void _handleRouteSelected(RouteOption selectedRouteOption) {
     setState(() {
       _currentRouteName = selectedRouteOption.name;
     });
-    _fetchAndLoadPolylineAndBusStops(selectedRouteOption.route.id); // MODIFIED
+    // Pass both ID and name to the new method for navigation
+    _fetchAndLoadPolylineAndBusStops(selectedRouteOption.route.id, selectedRouteOption.route.name);
   }
 
   Future<void> _openQrScanner() async {
@@ -315,11 +321,12 @@ class _DashboardDriverState extends State<DashboardDriver> {
         kToolbarHeight + _topPadding + TopBar.extraSpaceAboveBar +
         (TopBar.internalVerticalPadding * 2);
 
-
     return Scaffold(
       body: Stack(
         children: [
-          MapViewWidget(key: _mapViewKey),
+          // REMOVED: MapViewWidget is no longer directly in DashboardDriver
+          // It's now in PathRequestScreen
+          // MapViewWidget(key: _mapViewKey), // Remove this line
 
           Column(
             children: [
@@ -348,7 +355,7 @@ class _DashboardDriverState extends State<DashboardDriver> {
                           FloatingActionButton(
                             heroTag: "qr_scanner_driver", // Unique HeroTag for driver
                             onPressed: _openQrScanner,
-                            child: const Icon(Icons.qr_code_scanner), // Changed icon to QR
+                            child: const Icon(Icons.qr_code_scanner),
                           ),
                         ],
                       ),

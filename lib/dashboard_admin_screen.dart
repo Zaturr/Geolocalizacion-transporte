@@ -8,7 +8,7 @@ import 'widget/custom_dropdown_menu.dart';
 import 'widget/admin_profile_menu_body.dart';
 import 'widget/monthly_users_chart.dart';
 import 'widget/admin_quick_actions_bar.dart';
-import 'company_vehicles_screen.dart'; // <--- NEW: Import the vehicles list widget
+import 'widget/company_vehicles_screen.dart'; // <--- NEW: Import the vehicles list widget
 
 // Import your dashboard screens and new screens
 import 'dashboard_client_screen.dart';

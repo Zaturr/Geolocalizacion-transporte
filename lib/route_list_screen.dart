@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'route_creation_screen.dart'; // Importa la pantalla de creación de rutas
+import 'route_detail_screen.dart';   // Import the route detail screen
 
 class RouteListScreen extends StatefulWidget {
   const RouteListScreen({Key? key}) : super(key: key);
@@ -101,9 +102,11 @@ class _RouteListScreenState extends State<RouteListScreen> {
     }
 
     try {
+      // UPDATED: Select all the fields you want to display in the detail screen
+      // Based on your schema, these are the fields in 'routes' table:
       final List<dynamic> response = await Supabase.instance.client
           .from('routes')
-          .select('id, name')
+          .select('id, name, organization_id, created_at, created_by_uid, visibility') // Select all columns from 'routes'
           .eq('organization_id', _organizationId!) // Filter by the fetched organization_id
           .order('created_at', ascending: false);
 
@@ -177,15 +180,21 @@ class _RouteListScreenState extends State<RouteListScreen> {
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(
-                          route['description'] ?? 'Sin descripción',
+                          // Using visibility as a simple subtitle, you can change this.
+                          route['visibility'] == true ? 'Visible' : 'Oculta',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         trailing: Icon(Icons.arrow_forward_ios, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         onTap: () {
-                          // TODO: Implement navigation to route details or edit screen
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Ver detalles de la ruta: ${route['name']}')),
-                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RouteDetailScreen(route: route),
+                            ),
+                          ).then((_) {
+                            // Refresh routes when returning from detail screen (in case route was deleted or stops changed)
+                            _fetchUserOrganizationAndRoutes();
+                          });
                         },
                       ),
                     );

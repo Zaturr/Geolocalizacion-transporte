@@ -1,12 +1,23 @@
+// lib/screens/login_screen.dart
+// ignore_for_file: avoid_print, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Importar shared_preferences
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'register_screen.dart';
+// Import your custom widgets
+import 'widget/welcome_panel.dart';
+
+// Import your dashboard screens
 import 'dashboard_client_screen.dart';
 import 'dashboard_admin_screen.dart';
 import 'dashboard_driver_screen.dart';
-import 'widget/welcome_panel.dart'; // Importar el nuevo widget
+import 'register_screen.dart';
+
+// NEW: Import the controller and service
+import 'package:PathFinder/services/auth_service.dart';
+import 'package:PathFinder/controllers/login_controller.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,13 +27,10 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  late final LoginController _controller;
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
-  bool _verificandoSesion = true; // Para verificar la sesión al inicio
 
-  // --- Propiedades para la pantalla de bienvenida ---
+  // --- Propiedades para la pantalla de bienvenida (gestionadas por la UI) ---
   final PageController _pageController = PageController();
   int _currentPage = 0;
   double _panelHeight = 0.0; // Altura del panel de bienvenida, inicialmente oculto
@@ -32,88 +40,66 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeAppFlow(); // Llama a la nueva función de inicialización combinada
+    // Initialize controller and pass AuthService
+    _controller = LoginController(AuthService(Supabase.instance.client));
+    
+    // Set up callbacks from controller to UI for navigation and welcome panel display
+    _controller.onLoginSuccess = _navigateToDashboard;
+    _controller.onWelcomePanelShown = _showWelcomePanelUI;
+
+    // Add listener for general state changes (e.g., error messages, loading)
+    _controller.addListener(_onControllerChange);
+
+    // Start the app flow (session check or welcome panel)
+    _controller.initializeAppFlow();
   }
 
-  // Función combinada para verificar sesión y mostrar bienvenida si es necesario
-  Future<void> _initializeAppFlow() async {
-    // Primero, verificar si hay una sesión existente
-    await _verificarSesionExistente();
-
-    // Si _verificandoSesion es true, significa que _verificarSesionExistente
-    // ya navegó a otra pantalla o está en proceso, así que no continuamos.
-    if (!mounted || _verificandoSesion) {
-      return;
+  void _onControllerChange() {
+    // Show error dialog if an error message is present
+    if (_controller.errorMessage != null && mounted) {
+      _mostrarError(_controller.errorMessage!);
+      // REMOVED: _controller._setErrorMessage(null);
+      // The controller now handles clearing its own error message internally
+      // when a new operation starts.
     }
+    // Rebuild UI if other states like _isLoading or _verificandoSesion change
+    // This is important because ListenableBuilder only rebuilds parts of the tree,
+    // but the overall Scaffold structure and conditional rendering (like _verificandoSesion)
+    // are outside the ListenableBuilder.
+    setState(() {});
+  }
 
-    // Si no hay sesión, entonces verificar si el usuario ya vio la pantalla de bienvenida
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenWelcome = prefs.getBool('hasSeenWelcome') ?? false;
+  // Callback from controller to navigate to appropriate dashboard
+  void _navigateToDashboard(String role) {
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => _obtenerDashboardPorRol(role),
+        ),
+      );
+    }
+  }
 
-    if (!hasSeenWelcome) {
+  // Callback from controller to show the welcome panel
+  void _showWelcomePanelUI() {
+    if (mounted) {
       setState(() {
-        _showWelcomePanel = true; // Mostrar el panel de bienvenida
+        _showWelcomePanel = true; // Show the welcome panel
       });
-      // Animar el panel para que se deslice hacia arriba después de un breve retraso
+      // Animate the panel to slide up after a brief delay
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
           setState(() {
-            // Aumentar la altura del panel de bienvenida a 70% de la altura de la pantalla
-            _panelHeight = MediaQuery.of(context).size.height * 0.7; // Ajusta la altura según sea necesario
+            _panelHeight = MediaQuery.of(context).size.height * 0.7; // Adjust height as needed
           });
         }
       });
     }
-    // Si hasSeenWelcome es true, _showWelcomePanel permanece false, y el formulario de login se muestra por defecto.
   }
 
-  // Verifica si hay una sesión activa al iniciar
-  Future<void> _verificarSesionExistente() async {
-    try {
-      final session = Supabase.instance.client.auth.currentSession;
-      if (session != null) {
-        final userId = session.user.id;
-        final role = await _obtenerRolUsuario(userId);
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => _obtenerDashboardPorRol(role),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // Si hay error al verificar la sesión, mostrar login normal
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al verificar sesión: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _verificandoSesion = false); // Finaliza la verificación
-      }
-    }
-  }
-
-  // Obtiene el rol del usuario desde Supabase
-  Future<String> _obtenerRolUsuario(String userId) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .single();
-
-      return response['role'] as String? ?? 'Usuario'; // Rol por defecto
-    } catch (e) {
-      return 'Usuario';
-    }
-  }
-
-  // Devuelve el dashboard correspondiente al rol
+  // Obtiene el rol del usuario desde Supabase (logic moved to AuthService)
+  // This method is now only for mapping role string to Widget
   Widget _obtenerDashboardPorRol(String role) {
     switch (role) {
       case 'Administrador':
@@ -123,53 +109,6 @@ class _LoginScreenState extends State<LoginScreen> {
       case 'Usuario':
       default:
         return const DashboardClient();
-    }
-  }
-
-  // Maneja el proceso de login
-  Future<void> _iniciarSesion() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-
-      try {
-        final AuthResponse res = await Supabase.instance.client.auth.signInWithPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-
-        if (res.session != null) {
-          final userId = res.user!.id;
-          final rol = await _obtenerRolUsuario(userId);
-
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => _obtenerDashboardPorRol(rol),
-              ),
-            );
-          }
-        } else {
-          // Este bloque se ejecuta si la sesión es nula, lo que a menudo indica credenciales inválidas
-          _mostrarError('Credenciales Invalidas. Por favor verifique sus datos!');
-        }
-      } catch (e) {
-        // Manejo de errores específicos de Supabase AuthException
-        if (e is AuthException) {
-          // Supabase AuthException puede contener un statusCode.
-          // Un statusCode '400' o un mensaje que indique credenciales inválidas.
-          if (e.statusCode == '400' || e.message.contains('Invalid login credentials') || e.message.contains('invalid_grant')) {
-            _mostrarError('Credenciales Invalidas. Por favor verifique sus datos!');
-          } else {
-            _mostrarError('Error de autenticación: ${e.message}');
-          }
-        } else {
-          // Cualquier otro tipo de error inesperado
-          _mostrarError('Error inesperado: $e');
-        }
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
-      }
     }
   }
 
@@ -190,37 +129,39 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Función para marcar que el usuario ha completado la bienvenida.
-  Future<void> _setWelcomeSeen() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasSeenWelcome', true);
-    setState(() {
-      _showWelcomePanel = false; // Oculta el panel de bienvenida
-      _panelHeight = 0.0; // Anima el panel hacia abajo
-    });
+  // Function to mark that the user has completed the welcome.
+  Future<void> _setWelcomeSeenUI() async {
+    await _controller.setWelcomeSeen(); // Delegate to controller
+    if (mounted) {
+      setState(() {
+        _showWelcomePanel = false; // Hide the welcome panel
+        _panelHeight = 0.0; // Animate the panel down
+      });
+    }
   }
 
-  // Función para mostrar el panel de bienvenida de nuevo
-  void _showWelcomePanelAgain() {
-    setState(() {
-      _showWelcomePanel = true;
-      // Restablece la altura del panel a 70% de la altura de la pantalla
-      _panelHeight = MediaQuery.of(context).size.height * 0.7;
-      _currentPage = 0; // Opcional: Reinicia a la primera página de bienvenida
-    });
-    // Retrasar la llamada a jumpToPage para asegurar que el PageView esté montado
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_pageController.hasClients) { // Verificar si el controlador tiene clientes adjuntos
-        _pageController.jumpToPage(0); // Asegura que el PageView salte a la primera página
-      }
-    });
+  // Function to show the welcome panel again
+  void _showWelcomePanelAgainUI() {
+    _controller.showWelcomePanelAgain(); // Delegate to controller
+    if (mounted) {
+      setState(() {
+        _showWelcomePanel = true;
+        _panelHeight = MediaQuery.of(context).size.height * 0.7;
+        _currentPage = 0;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(0);
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _pageController.dispose(); // Disponer el controlador de página
+    _controller.removeListener(_onControllerChange);
+    _controller.dispose(); // Dispose the controller
+    _pageController.dispose(); // Dispose the page controller
     super.dispose();
   }
 
@@ -229,8 +170,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final theme = Theme.of(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // Muestra carga mientras verifica la sesión
-    if (_verificandoSesion) {
+    // Show loading while verifying session
+    if (_controller.verificandoSesion) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
@@ -244,120 +185,129 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // Contenido principal del formulario de Login
-          Positioned.fill( // <-- Se añadió Positioned.fill aquí
+          // Main login form content
+          Positioned.fill(
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Form(
                   key: _formKey,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 30.0),
-                        child: Image.asset(
-                          // Cambia la imagen del logo según el tema
-                          isDarkMode ? 'assets/LogoW.png' : 'assets/LogoB.png',
-                          height: 420,
-                          width: 420,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.account_circle, size: 120);
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        '¡Bienvenido de vuelta!',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: "Correo Electrónico",
-                          labelStyle: theme.textTheme.bodyLarge,
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: theme.colorScheme.outline),
+                  child: ListenableBuilder(
+                    listenable: _controller, // Listen to controller for isLoading and errorMessage
+                    builder: (context, child) {
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 30.0),
+                            child: Image.asset(
+                              isDarkMode ? 'assets/LogoW.png' : 'assets/LogoB.png',
+                              height: 420,
+                              width: 420,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(Icons.account_circle, size: 120);
+                              },
+                            ),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: theme.colorScheme.primary),
+                          const SizedBox(height: 20),
+                          Text(
+                            '¡Bienvenido de vuelta!',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        style: theme.textTheme.bodyLarge,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor ingresa tu correo';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _passwordController,
-                        decoration: InputDecoration(
-                          labelText: "Contraseña",
-                          labelStyle: theme.textTheme.bodyLarge,
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: theme.colorScheme.outline),
+                          const SizedBox(height: 30),
+                          TextFormField(
+                            controller: _controller.emailController, // Use controller's text controller
+                            decoration: InputDecoration(
+                              labelText: "Correo Electrónico",
+                              labelStyle: theme.textTheme.bodyLarge,
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: theme.colorScheme.outline),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: theme.colorScheme.primary),
+                              ),
+                            ),
+                            style: theme.textTheme.bodyLarge,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Por favor ingresa tu correo';
+                              }
+                              return null;
+                            },
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: theme.colorScheme.primary),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _controller.passwordController, // Use controller's text controller
+                            decoration: InputDecoration(
+                              labelText: "Contraseña",
+                              labelStyle: theme.textTheme.bodyLarge,
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: theme.colorScheme.outline),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: theme.colorScheme.primary),
+                              ),
+                            ),
+                            obscureText: true,
+                            style: theme.textTheme.bodyLarge,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Por favor ingresa tu contraseña';
+                              }
+                              return null;
+                            },
                           ),
-                        ),
-                        obscureText: true,
-                        style: theme.textTheme.bodyLarge,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor ingresa tu contraseña';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 30),
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _iniciarSesion,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: theme.colorScheme.onPrimary,
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator()
-                            : const Text("Iniciar Sesión"),
-                      ),
-                      const SizedBox(height: 15),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                          );
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.secondary,
-                        ),
-                        child: const Text("¿No tienes cuenta? Regístrate"),
-                      ),
-                      const SizedBox(height: 15), // Espacio adicional para el nuevo botón
-                      // Nuevo botón para mostrar la bienvenida de nuevo
-                      TextButton(
-                        onPressed: _showWelcomePanelAgain,
-                        style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.tertiary, // Un color diferente para destacarlo
-                        ),
-                        child: const Text("Mostrar Bienvenida"),
-                      ),
-                    ],
+                          const SizedBox(height: 30),
+                          ElevatedButton(
+                            onPressed: _controller.isLoading
+                                ? null
+                                : () async {
+                                    if (_formKey.currentState!.validate()) {
+                                      await _controller.login(); // Delegate login to controller
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: theme.colorScheme.onPrimary,
+                              minimumSize: const Size(double.infinity, 50),
+                            ),
+                            child: _controller.isLoading
+                                ? const CircularProgressIndicator()
+                                : const Text("Iniciar Sesión"),
+                          ),
+                          const SizedBox(height: 15),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.colorScheme.secondary,
+                            ),
+                            child: const Text("¿No tienes cuenta? Regístrate"),
+                          ),
+                          const SizedBox(height: 15),
+                          TextButton(
+                            onPressed: _showWelcomePanelAgainUI, // Call UI method
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.colorScheme.tertiary,
+                            ),
+                            child: const Text("Mostrar Bienvenida"),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
             ),
           ),
-          // Panel de Bienvenida (mostrado condicionalmente)
+          // Welcome Panel (conditionally displayed)
           if (_showWelcomePanel)
             WelcomePanel(
               pageController: _pageController,
@@ -369,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   _currentPage = index;
                 });
               },
-              onWelcomeComplete: _setWelcomeSeen,
+              onWelcomeComplete: _setWelcomeSeenUI, // Call UI method
             ),
         ],
       ),
