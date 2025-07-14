@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+// lib/dashboard_admin.dart
+
+import 'package:flutter/material.dart' hide Route;
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,18 +10,19 @@ import 'widget/custom_dropdown_menu.dart';
 import 'widget/admin_profile_menu_body.dart';
 import 'widget/monthly_users_chart.dart';
 import 'widget/admin_quick_actions_bar.dart';
-import 'widget/company_vehicles_screen.dart'; // <--- NEW: Import the vehicles list widget
+import 'widget/company_vehicles_dashboard_widget.dart'; // <--- NEW IMPORT for dashboard widget
+
 
 // Import your dashboard screens and new screens
-import 'dashboard_client_screen.dart';
+import 'dashboard_client_screen.dart'; // Ensure correct path for screens
 import 'dashboard_driver_screen.dart';
 import 'user_settings_screen.dart';
-//import 'create_organization_screen.dart'; // Comentado si no se usa directamente aquí
 import 'support_screen.dart';
 import 'manage_users_screen.dart';
 import 'edit_admin_settings_screen.dart';
+import 'route_list_screen.dart';
+import 'company_vehicles_screen.dart'; // <--- NEW IMPORT for the main screen
 
-import 'route_list_screen.dart'; // <--- NEW: Import the route list screen
 
 class DashboardAdmin extends StatefulWidget {
   const DashboardAdmin({super.key});
@@ -31,42 +34,74 @@ class DashboardAdmin extends StatefulWidget {
 class _DashboardAdminState extends State<DashboardAdmin> {
   bool _isProfileMenuOpen = false;
   String _userName = "Cargando...";
+  String? _organizationId; // New: to store the organization ID for the dashboard widget
+  bool _isLoadingOrgId = true; // New: to track org ID loading
+  String? _orgIdErrorMessage; // New: to store org ID loading errors
 
   late List<Widget> _profileMenuItems;
 
   @override
   void initState() {
     super.initState();
-    _fetchUserName();
+    _fetchUserNameAndOrganizationId(); // Modified to fetch both
   }
 
-  Future<void> _fetchUserName() async {
+  Future<void> _fetchUserNameAndOrganizationId() async {
+    setState(() {
+      _isLoadingOrgId = true;
+      _orgIdErrorMessage = null;
+    });
+
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        final response = await Supabase.instance.client
-            .from('profiles')
-            .select('username')
-            .eq('id', user.id)
-            .single();
-
-        if (mounted) {
-          setState(() {
-            _userName = response['username'] as String? ?? user.email ?? "Admin";
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _userName = "No Logueado";
-          });
-        }
+      if (user == null) {
+        throw Exception('User not logged in');
       }
-    } catch (e) {
-      print("Error fetching username: $e");
+
+      // Fetch username
+      final userResponse = await Supabase.instance.client
+          .from('profiles')
+          .select('username')
+          .eq('id', user.id)
+          .single();
+
+      // Fetch organization ID created by this user
+      final List<Map<String, dynamic>> organizationsResponse = await Supabase.instance.client
+          .from('organizations')
+          .select('id')
+          .eq('created_by', user.id);
+
+      if (mounted) {
+        setState(() {
+          _userName = userResponse['username'] as String? ?? user.email ?? "Admin";
+          if (organizationsResponse.isNotEmpty && organizationsResponse.first['id'] != null) {
+            _organizationId = organizationsResponse.first['id'] as String;
+          } else {
+            _orgIdErrorMessage = 'No organization found for this user.';
+            print('DashboardAdmin: No organization found for user ID: ${user.id}');
+          }
+        });
+      }
+    } on PostgrestException catch (e) {
       if (mounted) {
         setState(() {
           _userName = "Error";
+          _orgIdErrorMessage = 'Database Error: ${e.message}';
+        });
+      }
+      print("PostgrestException fetching user/org: $e");
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _userName = "Error";
+          _orgIdErrorMessage = 'An unexpected error occurred: $e';
+        });
+      }
+      print("Error fetching user/org: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingOrgId = false;
         });
       }
     }
@@ -187,9 +222,13 @@ class _DashboardAdminState extends State<DashboardAdmin> {
     _navigateTo(context, const EditAdminSettingsScreen());
   }
 
-  // NEW: Navigate to Route List Screen
   void _navigateToRouteList() {
     _navigateTo(context, const RouteListScreen());
+  }
+
+  // Navigate to the full Company Vehicles Management Screen
+  void _navigateToCompanyVehicles() {
+    _navigateTo(context, const CompanyVehiclesScreen());
   }
 
   double get _topPadding {
@@ -204,40 +243,27 @@ class _DashboardAdminState extends State<DashboardAdmin> {
 
   @override
   Widget build(BuildContext context) {
-    // Calcula la altura total de la TopBar, incluyendo el padding del sistema y el espacio extra.
-    // Se usa para posicionar otros elementos relativos a la TopBar.
     final double topBarHeightWithExtraSpace =
         kToolbarHeight + _topPadding + TopBar.extraSpaceAboveBar +
         (TopBar.internalVerticalPadding * 2);
 
     return Scaffold(
-      // [Fondo del Dashboard]
-      // El color de fondo del Scaffold se establece utilizando el color 'secondaryContainer'
-      // del esquema de colores de Material Design para proporcionar un contraste.
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: Stack(
         children: [
-          // [Caja 1: Contenido Principal del Dashboard]
-          // Un Column que contiene la TopBar y el área de contenido principal.
           Column(
             children: [
-              // [Caja 1.1: TopBar]
-              // La barra superior de la aplicación con el nombre de usuario y el botón de menú.
               TopBar(
                 onMenuPressed: _toggleProfileMenu,
                 userName: _userName,
                 topPadding: _topPadding,
               ),
-              // [Caja 1.2: Área de Contenido Desplazable]
-              // Un área expandida y desplazable que contiene los diferentes widgets del dashboard.
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // [Caja 1.2.1: Título de Resumen]
-                      // Título para la sección de resumen del dashboard.
                       Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Text(
@@ -248,25 +274,21 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                           ),
                         ),
                       ),
-                      // [Caja 1.2.2: Gráfico de Usuarios Mensuales]
-                      // Widget que muestra un gráfico de usuarios mensuales.
                       const MonthlyUsersChart(),
                       const SizedBox(height: 16),
-                      // [Caja 1.2.3: Barra de Acciones Rápidas del Admin]
-                      // Widget con botones para acciones rápidas del administrador.
-                      // Se asume que este widget contendrá el botón "Rutas"
-                      // y que su lógica de navegación se manejará internamente
-                      // o a través de un callback si es necesario.
-                      const AdminQuickActionsBar(),
+                      AdminQuickActionsBar(
+                        onVehiclesPressed: _navigateToCompanyVehicles,
+                      ),
                       const SizedBox(height: 16),
-                      // [Caja 1.2.4: Tarjeta de Estadísticas Rápidas]
-                      // Una tarjeta con información estadística clave.
+                      // Display the dashboard summary widget
+                      CompanyVehiclesDashboardWidget(
+                        organizationId: _organizationId, // Pass the fetched organization ID
+                      ),
+                      const SizedBox(height: 16),
                       Card(
                         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                         elevation: 4,
-                        // El color de fondo de la tarjeta utiliza el color 'surface' del esquema de colores,
-                        // que por defecto es diferente al color 'background' del Scaffold.
                         color: Theme.of(context).colorScheme.surface,
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
@@ -286,13 +308,6 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // [Caja 1.2.5: Lista de Vehículos de la Compañía]
-                      // Widget que muestra una lista de vehículos de la compañía.
-                      const CompanyVehiclesList(),
-                      const SizedBox(height: 16), // Espacio debajo de la lista de vehículos
-
-                      // [Caja 1.2.6: Botones de Navegación Adicionales]
-                      // Sección con botones para navegar a otras pantallas de administración.
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Column(
@@ -317,7 +332,6 @@ class _DashboardAdminState extends State<DashboardAdmin> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                             ),
-                            // El botón "Administrar Rutas" ha sido eliminado de aquí.
                           ],
                         ),
                       ),
@@ -329,21 +343,18 @@ class _DashboardAdminState extends State<DashboardAdmin> {
             ],
           ),
 
-          // [Caja 2: Menú de Perfil Desplegable]
-          // El menú desplegable del perfil, que se muestra u oculta condicionalmente.
           if (_isProfileMenuOpen)
             Positioned(
-              // Posiciona el menú justo debajo de la TopBar.
               top: topBarHeightWithExtraSpace,
               left: 0,
               right: 0,
               child: GestureDetector(
-                onTap: _closeProfileMenu, // Cierra el menú al tocar fuera
-                behavior: HitTestBehavior.opaque, // Permite detectar toques en el área transparente
+                onTap: _closeProfileMenu,
+                behavior: HitTestBehavior.opaque,
                 child: CustomDropdownMenu(
                   onCloseMenu: _closeProfileMenu,
                   menuItems: _profileMenuItems,
-                  topPosition: 0, // Posición interna del menú (puede ajustarse)
+                  topPosition: 0,
                 ),
               ),
             ),

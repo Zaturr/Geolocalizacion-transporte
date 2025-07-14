@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import '../route_list_screen.dart'; // Asegúrate de que la ruta sea correcta
+import '../route_list_screen.dart'; // Ensure the path is correct
+// import '../company_vehicles_screen.dart'; // No longer needed directly here, callback will handle it
 
 class AdminQuickActionsBar extends StatelessWidget {
-  const AdminQuickActionsBar({Key? key}) : super(key: key);
+  // Add a required callback for the vehicles action
+  final VoidCallback onVehiclesPressed;
+
+  const AdminQuickActionsBar({Key? key, required this.onVehiclesPressed}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Acceder al ColorScheme del tema actual para consistencia visual
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
-    // Define your quick action buttons
-    // En una aplicación real, estos tendrían callbacks onTap reales para navegar o realizar acciones
     final List<Map<String, dynamic>> actions = [
       {
         'label': 'Rutas',
         'icon': Icons.alt_route,
         'onTap': () {
-          // Navegar a RouteListScreen cuando se presione el botón "Rutas"
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const RouteListScreen()),
@@ -40,12 +40,9 @@ class AdminQuickActionsBar extends StatelessWidget {
         },
       },
       {
-        'label': 'Placeholder 1',
-        'icon': Icons.more_horiz, // Generic icon for placeholder
-        'onTap': () {
-          print('Placeholder 1 button pressed');
-          // TODO: Add functionality later
-        },
+        'label': 'Vehiculos',
+        'icon': Icons.car_crash, // Generic icon for placeholder
+        'onTap': onVehiclesPressed, // <--- Use the passed callback here
       },
       {
         'label': 'Placeholder 2',

@@ -4,13 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:PathFinder/models/map_models.dart'; // Import your BusStop model
 
 class MapViewWidget extends StatefulWidget {
-  // NEW: Optional parameter to receive polylines from MapsRoutes
-  final Set<Polyline>? polylinesFromRoutes;
-
-  const MapViewWidget({
-    Key? key,
-    this.polylinesFromRoutes, // NEW: Add this to the constructor
-  }) : super(key: key);
+  const MapViewWidget({Key? key}) : super(key: key);
 
   @override
   State<MapViewWidget> createState() => MapViewWidgetState();
@@ -18,8 +12,7 @@ class MapViewWidget extends StatefulWidget {
 
 class MapViewWidgetState extends State<MapViewWidget> {
   GoogleMapController? _mapController;
-  // MODIFIED: _polylines can be managed internally or updated externally
-  Set<Polyline> _polylines = {};
+  final Set<Polyline> _polylines = {};
   final Set<Marker> _markers = {};
   final LatLng _initialCameraPosition = const LatLng(10.4806, -66.9036); // Example: Caracas, Venezuela
 
@@ -27,20 +20,6 @@ class MapViewWidgetState extends State<MapViewWidget> {
   void initState() {
     super.initState();
     print("MapViewWidgetState: Initialized.");
-    // If initial polylines are provided, use them
-    if (widget.polylinesFromRoutes != null) {
-      _polylines = Set.from(widget.polylinesFromRoutes!);
-    }
-  }
-
-  // NEW: Method to update polylines specifically from MapsRoutes
-  void setMapsRoutesPolylines(Set<Polyline> newPolylines) {
-    print("MapViewWidgetState: setMapsRoutesPolylines called with ${newPolylines.length} polylines.");
-    if (mounted) {
-      setState(() {
-        _polylines = Set.from(newPolylines); // Directly use the set from MapsRoutes
-      });
-    }
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -48,31 +27,24 @@ class MapViewWidgetState extends State<MapViewWidget> {
     print("MapViewWidgetState: GoogleMapController created.");
   }
 
-  // Keep updatePolyline if you still want to allow manual polyline updates
-  // However, with Maps_routes, this might become less used for actual routes.
-  // It could still be useful for other line drawings.
   void updatePolyline(List<LatLng> newPolylineCoordinates) {
     print("MapViewWidgetState: updatePolyline called with ${newPolylineCoordinates.length} points.");
     if (mounted) {
       setState(() {
-        // Only clear if we are not managing polylines via setMapsRoutesPolylines
-        // For now, it's safer to clear here if this method is used for distinct polylines.
-        // If this method is now solely for other, non-route polylines, adjust logic.
-        _polylines.clear(); // This will clear routes drawn by Maps_routes too!
-                             // Consider if you want this or if setMapsRoutesPolylines should be the primary.
+        _polylines.clear();
         if (newPolylineCoordinates.isNotEmpty) {
           _polylines.add(
             Polyline(
-              polylineId: const PolylineId('manual_route_polyline'), // Change ID to differentiate
+              polylineId: const PolylineId('selected_route'),
               points: newPolylineCoordinates,
               color: Colors.blue,
               width: 5,
             ),
           );
           _fitPolylineToMap(newPolylineCoordinates);
-          print("MapViewWidgetState: Manual polyline added to map.");
+          print("MapViewWidgetState: Polyline added to map.");
         } else {
-          print("MapViewWidgetState: No manual polyline points to add.");
+          print("MapViewWidgetState: No polyline points to add.");
         }
       });
     }
@@ -90,9 +62,11 @@ class MapViewWidgetState extends State<MapViewWidget> {
                 markerId: MarkerId(stop.id),
                 position: stop.coordinates,
                 infoWindow: InfoWindow(title: stop.name),
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange), // Example icon
               ),
             );
+            // Optional: print individual stop added
+            // print("MapViewWidgetState: Added marker for stop: ${stop.name} at ${stop.coordinates}");
           }
           print("MapViewWidgetState: ${busStops.length} markers added to map.");
         } else {
@@ -108,9 +82,6 @@ class MapViewWidgetState extends State<MapViewWidget> {
       return;
     }
 
-    // This method is primarily for fitting to your own polyline data.
-    // Maps_routes might adjust the camera on its own,
-    // or you might need a more sophisticated fit that considers both polyline and markers.
     LatLngBounds bounds;
     if (polylineCoordinates.length == 1) {
       bounds = LatLngBounds(
@@ -153,7 +124,7 @@ class MapViewWidgetState extends State<MapViewWidget> {
         target: _initialCameraPosition,
         zoom: 12.0,
       ),
-      polylines: _polylines, // Use the internally managed _polylines
+      polylines: _polylines,
       markers: _markers,
       myLocationEnabled: true,
       myLocationButtonEnabled: true,

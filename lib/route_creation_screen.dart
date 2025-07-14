@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-//import 'package:latlong2/latlong.dart'; // Para LatLng (aunque Google Maps usa su propio LatLng, lo mantenemos por si acaso)
-import 'package:supabase_flutter/supabase_flutter.dart'; // Para Supabase
-import 'package:google_maps_flutter/google_maps_flutter.dart' as gm; // Alias para evitar conflictos con latlong2
-import 'dart:async'; // Para usar Timer
-import 'widget/route_creation_map_widget.dart'; // Importa el nuevo widget de mapa
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
+import 'dart:async';
+import 'widget/route_creation_map_widget.dart';
 
 class RouteCreationScreen extends StatefulWidget {
-  // Add the organizationId parameter here
   final String organizationId;
 
   const RouteCreationScreen({
     Key? key,
-    required this.organizationId, // Mark it as required
+    required this.organizationId,
   }) : super(key: key);
 
   @override
@@ -34,7 +32,7 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
   void initState() {
     super.initState();
     debugPrint('RouteCreationScreen: initState - Pantalla de creación de ruta inicializada.');
-    debugPrint('RouteCreationScreen: organizationId recibido: ${widget.organizationId}'); // Verify the ID
+    debugPrint('RouteCreationScreen: organizationId recibido: ${widget.organizationId}');
   }
 
   @override
@@ -142,19 +140,7 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
       return;
     }
 
-    // Check if organizationId is available before proceeding
-    // Note: widget.organizationId is a required String, so it won't be null.
-    // This null check can technically be removed if you are certain it's always passed.
-    // However, keeping it doesn't hurt and adds a layer of safety.
-    if (widget.organizationId == null) {
-      if (mounted) {
-        _showCustomTopMessage('Error: No se pudo obtener la ID de la organización para guardar la ruta.', backgroundColor: Theme.of(context).colorScheme.error);
-      }
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
+    debugPrint('RouteCreationScreen: _finishRoute - organizationId: ${widget.organizationId}');
 
     final TextEditingController routeNameController = TextEditingController();
     final String? routeName = await showDialog<String>(
@@ -220,15 +206,14 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
 
     try {
       // 1. Insertar la nueva ruta en la tabla 'routes'
-      // Columns: id, name, created_at, created_by_uid, organization_id, visibility
       debugPrint('RouteCreationScreen: _finishRoute - Intentando insertar ruta en Supabase...');
       final List<Map<String, dynamic>> routeResponse = await supabase
           .from('routes')
           .insert({
             'name': routeName,
             'created_by_uid': userId,
-            'organization_id': widget.organizationId, // Ensure organizationId is passed
-            'visibility': true, // Assuming default visibility is true based on schema.
+            'organization_id': widget.organizationId,
+            'visibility': true,
           })
           .select();
 
@@ -239,21 +224,19 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
 
       final String routeId = routeResponse.first['id'] as String;
       debugPrint('RouteCreationScreen: _finishRoute - Ruta insertada con ID: $routeId');
-      // Added this line for debugging foreign key issues
       debugPrint('RouteCreationScreen: _finishRoute - Attempting to insert paradas with routeId: $routeId');
 
       // 2. Insertar cada parada en la tabla 'paradas'
-      // Now using 'organizacion_id' instead of 'creado_por'
-      // Columns now are: id, Ruta (FK to routes.id), organizacion_id (FK to organizations.id), Nombre_Parada, Coordenadas
       debugPrint('RouteCreationScreen: _finishRoute - Insertando ${_stops.length} paradas...');
       for (int i = 0; i < _stops.length; i++) {
         await supabase.from('paradas').insert({
-          'Ruta': routeId, // Link to the created route ID
-          'Nombre_Parada': _stops[i]['name'], // Column name from schema (case-sensitive)
-          'Coordenadas': '${_stops[i]['latitude']},${_stops[i]['longitude']}', // Combined lat/lon into 'Coordenadas' (text)
-          'organizacion_id': widget.organizationId, // <--- CHANGED THIS LINE
+          'Ruta': routeId,
+          'Nombre_Parada': _stops[i]['name'],
+          'Coordenadas': '${_stops[i]['latitude']},${_stops[i]['longitude']}',
+          'organizacion_id': widget.organizationId,
+          'Index': i + 1, // Corrected: Index starts from 1 to satisfy DB constraint
         });
-        debugPrint('RouteCreationScreen: _finishRoute - Parada ${i + 1} insertada: ${_stops[i]['name']}');
+        debugPrint('RouteCreationScreen: _finishRoute - Parada ${i + 1} insertada: ${_stops[i]['name']} with Index: ${i + 1}');
       }
 
       if (mounted) {
@@ -343,7 +326,6 @@ class _RouteCreationScreenState extends State<RouteCreationScreen> {
                             child: Text('${index + 1}', style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer)),
                           ),
                           title: Text(stop['name'], style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-                          // Display coordinates from the combined string, if desired
                           subtitle: Text('Lat: ${stop['latitude'].toStringAsFixed(4)}, Lon: ${stop['longitude'].toStringAsFixed(4)}',
                               style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
                         );

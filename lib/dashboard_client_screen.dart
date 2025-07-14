@@ -2,22 +2,19 @@
 // ignore_for_file: avoid_print, use_build_context_synchronously
 
 import 'package:flutter/material.dart' hide Route;
-import 'dart:io'; // For Platform.isAndroid/iOS
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
-//import 'package:google_maps_flutter/google_maps_flutter.dart';
-//import 'package:google_maps_routes/google_maps_routes.dart';
 
 // Import your custom widgets
 import 'widget/top_bar.dart';
 import 'widget/custom_dropdown_menu.dart';
 import 'widget/route_selector_bar.dart';
 import 'widget/profile_menu_body.dart';
-//import 'widget/Path_Request.dart'; // NEW: Import the new screen
 
 // Import your dashboard screens and new screens
 import 'dashboard_admin_screen.dart';
 import 'dashboard_driver_screen.dart';
-//import 'widget/map_screen.dart';
+import 'widget/map_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'user_settings_screen.dart';
 import 'create_organization_screen.dart';
@@ -26,8 +23,6 @@ import 'support_screen.dart';
 // Import services and models for routes
 import 'package:PathFinder/services/map_data_service.dart';
 import 'package:PathFinder/models/map_models.dart';
-//import 'package:PathFinder/widget/Path_Request.dart';
-
 
 class DashboardClient extends StatefulWidget {
   const DashboardClient({Key? key}) : super(key: key);
@@ -48,9 +43,7 @@ class _DashboardClientState extends State<DashboardClient> {
   List<Route> _fetchedRoutes = [];
   bool _isLoadingRoutes = true;
 
-  // GlobalKey for MapViewWidget is no longer needed here as MapViewWidget is moved
-  // final GlobalKey<MapViewWidgetState> _mapViewKey = GlobalKey<MapViewWidgetState>();
-
+  final GlobalKey<MapViewWidgetState> _mapViewKey = GlobalKey<MapViewWidgetState>();
 
   @override
   void initState() {
@@ -100,14 +93,12 @@ class _DashboardClientState extends State<DashboardClient> {
   }
 
   Future<void> _fetchRoutes() async {
-    print("DashboardClient: Attempting to fetch routes metadata...");
     setState(() {
       _isLoadingRoutes = true;
       _currentRouteName = "Cargando rutas...";
     });
     try {
       _fetchedRoutes = await _mapDataService.fetchRoutes();
-      print("DashboardClient: Fetched ${_fetchedRoutes.length} routes metadata.");
 
       if (mounted) {
         setState(() {
@@ -121,16 +112,14 @@ class _DashboardClientState extends State<DashboardClient> {
 
           if (_availableRoutes.isNotEmpty) {
             _currentRouteName = _availableRoutes.first.name;
-            print("DashboardClient: Initial route selected: ${_availableRoutes.first.name} (ID: ${_availableRoutes.first.route.id})");
-            // No direct map display here, just set current route name initially
+            _fetchAndLoadPolylineAndBusStops(_availableRoutes.first.route.id); // MODIFIED
           } else {
             _currentRouteName = "No hay rutas disponibles";
-            print("DashboardClient: No routes available.");
           }
         });
       }
     } catch (e) {
-      print("DashboardClient: Error fetching routes: $e");
+      print("Error fetching routes: $e");
       if (mounted) {
         setState(() {
           _currentRouteName = "Error al cargar rutas";
@@ -149,20 +138,22 @@ class _DashboardClientState extends State<DashboardClient> {
     }
   }
 
-  // MODIFIED: This method now *navigates* to the PathRequestScreen
-  Future<void> _fetchAndLoadPolylineAndBusStops(String routeId, String routeName) async {
-    print("DashboardClient: Preparing to show map for route ID: $routeId and Name: $routeName");
-    
-    // Navigate to the new PathRequestScreen, passing the necessary route information
-    //Navigator.push(
-    //  context,
-     // MaterialPageRoute(
-        //builder: (context) => PathRequestScreen(
-        //  routeId: routeId,
-        //  routeName: routeName,
-        //),
-    //  ),
-    //);
+  // MODIFIED: Fetches polyline AND bus stops, then updates the map
+  Future<void> _fetchAndLoadPolylineAndBusStops(String routeId) async {
+    try {
+      // Fetch polyline
+      final polylineCoordinates = await _mapDataService.fetchPolylineForRoute(routeId);
+      _mapViewKey.currentState?.updatePolyline(polylineCoordinates);
+
+      // Fetch bus stops for the route
+      final busStops = await _mapDataService.fetchBusStopsForRoute(routeId);
+      _mapViewKey.currentState?.updateBusStops(busStops); // NEW: Update bus stops
+    } catch (e) {
+      print("Error loading route data for route $routeId: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al cargar datos de la ruta: $e")),
+      );
+    }
   }
 
   @override
@@ -257,13 +248,12 @@ class _DashboardClientState extends State<DashboardClient> {
     Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
   }
 
-  // MODIFIED: _handleRouteSelected now passes routeName and ID to _fetchAndLoadPolylineAndBusStops
+  // MODIFIED: _handleRouteSelected to call the combined fetch method
   void _handleRouteSelected(RouteOption selectedRouteOption) {
-    print("DashboardClient: Route selected: ${selectedRouteOption.name} (ID: ${selectedRouteOption.route.id})");
     setState(() {
       _currentRouteName = selectedRouteOption.name;
     });
-    _fetchAndLoadPolylineAndBusStops(selectedRouteOption.route.id, selectedRouteOption.name);
+    _fetchAndLoadPolylineAndBusStops(selectedRouteOption.route.id); // MODIFIED
   }
 
   Future<void> _openQrScanner() async {
@@ -334,8 +324,7 @@ class _DashboardClientState extends State<DashboardClient> {
     return Scaffold(
       body: Stack(
         children: [
-          // REMOVED: MapViewWidget is no longer directly in DashboardClient
-          // It's now in PathRequestScreen
+          MapViewWidget(key: _mapViewKey),
 
           Column(
             children: [
@@ -362,9 +351,9 @@ class _DashboardClientState extends State<DashboardClient> {
                       child: Column(
                         children: [
                           FloatingActionButton(
-                            heroTag: "qr_scanner_client",
+                            heroTag: "qr_scanner_client", // Unique HeroTag
                             onPressed: _openQrScanner,
-                            child: const Icon(Icons.qr_code_scanner),
+                            child: const Icon(Icons.qr_code_scanner), // Changed icon to QR
                           ),
                         ],
                       ),
