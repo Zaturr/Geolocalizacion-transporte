@@ -4,11 +4,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:package_info_plus/package_info_plus.dart'; // Importar package_info_plus
 
-import 'login.dart';
-import 'dashboard_client.dart';
-import 'dashboard_admin.dart';
-import 'dashboard_driver.dart';
-import 'themes.dart';
+import 'login_screen.dart';
+import 'dashboard_client_screen.dart';
+import 'dashboard_admin_screen.dart';
+import 'dashboard_driver_screen.dart';
+import 'widget/themes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

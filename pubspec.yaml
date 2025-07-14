@@ -37,6 +37,9 @@ dependencies:
   
   package_info_plus: ^8.0.0 # O la versión más reciente compatible
 
+
+
+
   shared_preferences: ^2.5.3
   cupertino_icons: ^1.0.8
   http: ^1.1.0
@@ -54,6 +57,7 @@ dependencies:
   fl_chart: ^0.68.0 #graphs
   mobile_scanner: ^7.0.1 #escanear codigos qr
 
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
